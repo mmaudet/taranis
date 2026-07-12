@@ -1,12 +1,12 @@
-"""Test de non-régression contre le collapse de représentation.
+"""Regression test guarding against representation collapse.
 
-On lance un mini-entraînement (200 pas, modèle compact) sur des données
-aléatoires structurées, et on vérifie qu'après l'entraînement :
+Run a mini training (200 steps, compact model) on structured random data
+and check that after training:
 
-- l'écart-type moyen des embeddings reste au-dessus d'un seuil,
-- le rang effectif de la covariance reste au-dessus d'un seuil.
+- the mean embedding std remains above a threshold,
+- the effective covariance rank remains above a threshold.
 
-Ces deux garde-fous sont les seuls fiables pour détecter un collapse.
+These two guardrails are the only reliable ones to detect collapse.
 """
 
 from __future__ import annotations
@@ -20,11 +20,11 @@ from taranis.train import TrainerConfig, TSJEPATrainer
 
 def _fake_dataset(n=1024, Tw=32, V=4, seed=0):
     rng = np.random.default_rng(seed)
-    # signal structuré : lente sinusoïde + tendance + bruit
+    # structured signal: slow sinusoid + trend + noise
     t = np.arange(Tw)[None, :, None]
     base = np.sin(2 * np.pi * t / Tw) + 0.5 * np.cos(2 * np.pi * t / (Tw / 3))
     x = np.tile(base, (n, 1, V)).astype(np.float32)
-    # perturbations par échantillon
+    # per-sample perturbations
     x += rng.normal(0.0, 0.3, size=x.shape).astype(np.float32)
     return x
 
@@ -58,10 +58,10 @@ def test_pas_de_collapse_apres_petit_entrainement():
     state = trainer.fit(verbose=False)
 
     last = state.val_stats[-1]
-    # les embeddings doivent conserver une dispersion nette
+    # embeddings must keep a clear dispersion
     assert last["z_ctx_std"] > 0.1, f"z_ctx_std trop bas : {last['z_ctx_std']}"
     assert last["z_tgt_std"] > 0.1, f"z_tgt_std trop bas : {last['z_tgt_std']}"
-    # rang effectif >= 2, largement au-dessus de 1 (collapse total)
+    # effective rank >= 2, well above 1 (full collapse)
     assert last["z_ctx_rank"] >= 2.0, f"z_ctx_rank trop bas : {last['z_ctx_rank']}"
     assert last["z_tgt_rank"] >= 2.0, f"z_tgt_rank trop bas : {last['z_tgt_rank']}"
 

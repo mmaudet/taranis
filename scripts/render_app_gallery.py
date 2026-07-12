@@ -1,4 +1,4 @@
-"""Assemble les trois mockups (vert, orange, rouge) côte à côte pour la doc."""
+"""Assemble the three mockups (green, orange, red) side by side for the docs."""
 
 from __future__ import annotations
 

@@ -1,9 +1,8 @@
-"""Métriques d'évaluation communes à toutes les baselines et modèles.
+"""Evaluation metrics shared by all baselines and models.
 
-On garde une API simple qui prend `y_true` (0/1) et `y_score` (probabilité)
-et retourne un rapport structuré. Le seuil est ajusté sur le split de
-validation, jamais sur le test. C'est explicitement séparé pour éviter la
-fuite d'information.
+Simple API: it takes `y_true` (0/1) and `y_score` (probability) and returns
+a structured report. The threshold is tuned on the validation split, never
+on test. This separation is enforced to prevent information leakage.
 """
 
 from __future__ import annotations
@@ -48,14 +47,13 @@ class ClassificationReport:
 def tune_threshold_on_val(
     y_val: np.ndarray, score_val: np.ndarray, criterion: str = "f1"
 ) -> float:
-    """Retourne le seuil qui maximise `criterion` sur la validation.
+    """Return the threshold that maximises `criterion` on validation.
 
-    En sécurité, on privilégiera plus tard `recall_at_precision` ou une
-    contrainte de rappel minimal. Pour l'instant, `f1` sert de point de
-    départ raisonnable.
+    For safety-critical use, we will later prefer `recall_at_precision` or
+    a minimal-recall constraint. For now, `f1` is a reasonable default.
     """
     precisions, recalls, thresholds = precision_recall_curve(y_val, score_val)
-    # `thresholds` a une longueur de `n - 1` par rapport à precisions/recalls
+    # `thresholds` has length `n - 1` relative to precisions/recalls
     p = precisions[:-1]
     r = recalls[:-1]
     if criterion == "f1":
@@ -95,10 +93,94 @@ def classification_report(
 
 
 def roc_curve(y_true: np.ndarray, y_score: np.ndarray):
-    """FPR, TPR, seuils."""
+    """FPR, TPR, thresholds."""
     return sk_roc_curve(y_true, y_score)
 
 
 def pr_curve(y_true: np.ndarray, y_score: np.ndarray):
-    """Précisions, rappels, seuils."""
+    """Precisions, recalls, thresholds."""
     return precision_recall_curve(y_true, y_score)
+
+
+@dataclass
+class AlertThresholds:
+    """GREEN/ORANGE/RED thresholds tuned by target recall on validation.
+
+    - `orange`: threshold above which a vigilance (ORANGE) is raised.
+    - `rouge` : threshold above which a strong alert (RED) is raised.
+
+    We also expose the **actual** recall and precision obtained on
+    validation at each threshold, to make the chosen trade-off visible.
+    """
+
+    orange: float
+    rouge: float
+    recall_orange: float
+    precision_orange: float
+    recall_rouge: float
+    precision_rouge: float
+    prevalence: float
+    n_val: int
+
+
+def calibrate_alert_thresholds(
+    y_val: np.ndarray,
+    score_val: np.ndarray,
+    target_recall_orange: float = 0.70,
+    target_recall_rouge: float = 0.30,
+) -> AlertThresholds:
+    """Choose two alert thresholds from recall targets on validation.
+
+    Optimisation is oriented toward **mountain safety**: pick a target
+    recall first (the fraction of true storms we want to catch), then find
+    the matching threshold. Precision becomes a consequence, not an
+    objective.
+
+    - `target_recall_orange` (~0.70): catch ~70 % of storms for the
+      vigilance level. Precision will be modest (many false positives), but
+      only one storm out of three is missed.
+    - `target_recall_rouge` (~0.30): only fire the strong alert when the
+      model is really sure (top 30 % of storms); precision should be much
+      higher so we do not trigger too often.
+
+    Returns: `AlertThresholds` with the thresholds and their actual metrics.
+    """
+    if not (0 < target_recall_rouge <= target_recall_orange <= 1):
+        raise ValueError(
+            "attendu 0 < target_recall_rouge <= target_recall_orange <= 1"
+        )
+
+    y = np.asarray(y_val).astype(int)
+    s = np.asarray(score_val).astype(float)
+    precisions, recalls, thresholds = precision_recall_curve(y, s)
+    # sklearn: precisions[i] / recalls[i] correspond to thresholds[i-1] (i>=1).
+    # We align by ignoring the last value (recall=0, precision=1) and looking
+    # only at points tied to actual thresholds.
+    p = precisions[:-1]
+    r = recalls[:-1]
+    t = thresholds
+
+    def _thr_for_recall(target):
+        # recalls decrease as the threshold increases (indexed by t increasing);
+        # we look for the LARGEST threshold guaranteeing recall >= target.
+        idx = np.where(r >= target)[0]
+        if len(idx) == 0:
+            return float(t.min()), float(r.max()), float(p[int(np.argmax(r))])
+        # take the last index (highest threshold that still meets the target)
+        k = int(idx[-1])
+        return float(t[k]), float(r[k]), float(p[k])
+
+    thr_o, rec_o, prec_o = _thr_for_recall(target_recall_orange)
+    thr_r, rec_r, prec_r = _thr_for_recall(target_recall_rouge)
+
+    # sanity: RED > ORANGE (otherwise the RED recall target is too high)
+    if thr_r < thr_o:
+        thr_r = thr_o
+
+    return AlertThresholds(
+        orange=thr_o, rouge=thr_r,
+        recall_orange=rec_o, precision_orange=prec_o,
+        recall_rouge=rec_r, precision_rouge=prec_r,
+        prevalence=float(y.mean()),
+        n_val=int(len(y)),
+    )

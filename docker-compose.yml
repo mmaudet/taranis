@@ -12,7 +12,7 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - TARANIS_PROBE=/app/runs/probe/ww_rich
+      - TARANIS_PROBE=/app/runs/probe/combined
     # décommenter pour monter une autre sonde depuis l'hôte :
     # volumes:
     #   - ./runs/probe/other:/app/runs/probe/other

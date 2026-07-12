@@ -1,4 +1,4 @@
-"""Inférence Taranis, chargement modèle + API + niveaux d'alerte."""
+"""Taranis inference: model loading, API, and alert levels."""
 
 from taranis.infer.inference import (
     AlertLevel,

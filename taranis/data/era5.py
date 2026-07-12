@@ -1,29 +1,30 @@
-"""Chargeur ERA5 (Copernicus, ECMWF Reanalysis v5).
+"""ERA5 loader (Copernicus, ECMWF Reanalysis v5).
 
-ERA5 est la réanalyse horaire globale de référence, publiée par le Copernicus
-Climate Change Service (C3S) sur infrastructure européenne. Elle est physique
-plutôt qu'observationnelle, homogène, sans manquants, et disponible depuis
-1940.
+ERA5 is the reference hourly global reanalysis, published by the Copernicus
+Climate Change Service (C3S) on European infrastructure. It is physical
+rather than observational, homogeneous, without missing values, and
+available since 1940.
 
-**Prérequis utilisateur** :
+**User prerequisites**:
 
-1. Compte gratuit sur https://cds.climate.copernicus.eu/
-2. Fichier `~/.cdsapirc` avec le token API (voir la page how-to-api)
-3. Acceptation des conditions du dataset `reanalysis-era5-single-levels`
-   (case à cocher, une fois pour toutes, sur la fiche dataset).
+1. Free account at https://cds.climate.copernicus.eu/
+2. `~/.cdsapirc` file holding the API token (see the how-to-api page).
+3. Accept the terms of the `reanalysis-era5-single-levels` dataset
+   (checkbox on the dataset page, once and for all).
 
-Nos conventions :
+Our conventions:
 
-- On demande **quatre variables surface** correspondant à nos canaux :
+- We request **four surface variables** matching our channels:
     * `surface_pressure` (Pa)
     * `2m_temperature` (K)
-    * `2m_dewpoint_temperature` (K) → sert à calculer l'humidité relative
-    * `10m_u_component_of_wind` et `10m_v_component_of_wind` (m/s) → module = vent
-- On récupère aussi `total_precipitation` (m, cumul horaire) pour l'étiquette
-  proxy pluie forte.
-- Résolution 0.25° x 0.25°.
-- On récupère un ou plusieurs **points de grille** (lat, lon) et on retourne
-  un DataFrame par point, format compatible avec `taranis.data.windows`.
+    * `2m_dewpoint_temperature` (K), used to compute relative humidity.
+    * `10m_u_component_of_wind` and `10m_v_component_of_wind` (m/s); the
+      modulus gives the wind speed.
+- We also grab `total_precipitation` (m, hourly cumulative) for the heavy
+  rain proxy label.
+- Resolution 0.25 deg x 0.25 deg.
+- We fetch one or several **grid points** (lat, lon) and return one
+  DataFrame per point, compatible with `taranis.data.windows`.
 """
 
 from __future__ import annotations
@@ -37,13 +38,13 @@ import pandas as pd
 
 CANAUX_ERA5 = ("pressure", "temp", "humidity", "wind")
 
-# Constantes pour l'humidité relative à partir de la point de rosée
-# Formule de Magnus-Tetens
+# Constants for relative humidity from dew point
+# Magnus-Tetens formula
 _A, _B = 17.625, 243.04
 
 
 def relative_humidity_from_dewpoint(t_c: np.ndarray, td_c: np.ndarray) -> np.ndarray:
-    """Humidité relative en %, à partir de température et point de rosée en °C."""
+    """Relative humidity in %, from temperature and dew point in deg C."""
     e_s = np.exp(_A * t_c / (_B + t_c))
     e = np.exp(_A * td_c / (_B + td_c))
     return np.clip(100.0 * e / e_s, 0.0, 100.0)
@@ -62,18 +63,22 @@ def fetch_era5(
     out_dir: Path,
     verbose: bool = True,
 ) -> list[Path]:
-    """Télécharge un fichier ERA5 par (point, année), format NetCDF.
+    """Download one ERA5 file per (point, year, month) in NetCDF format.
 
-    Retourne la liste des chemins écrits.
+    We split by MONTH to stay within the CDS cost limits (tightened at the
+    end of 2025, ~120k items per request). Each file has ~700 hourly obs
+    x 6 variables x 1 pixel = ~4200 items, well below the ceiling.
 
-    Nécessite `cdsapi` et un token valide dans `~/.cdsapirc`.
+    Returns: list of written paths.
+
+    Requires `cdsapi` and a valid token in `~/.cdsapirc`.
     """
     try:
         import cdsapi
     except ImportError as e:
         raise SystemExit(
             "cdsapi n'est pas installé. Lancer :\n"
-            "  uv add --group era5 cdsapi netCDF4 xarray"
+            "  uv sync --extra era5"
         ) from e
 
     out_dir = Path(out_dir)
@@ -83,42 +88,44 @@ def fetch_era5(
 
     for pt in grid_points:
         for year in years:
-            path = out_dir / f"era5_{pt.nom}_{year}.nc"
-            if path.exists():
+            for month in range(1, 13):
+                path = out_dir / f"era5_{pt.nom}_{year}_{month:02d}.nc"
+                if path.exists():
+                    if verbose:
+                        print(f"  [skip] {path.name}")
+                    written.append(path)
+                    continue
                 if verbose:
-                    print(f"  [skip] {path.name} existe déjà")
+                    print(f"  [fetch] {pt.nom} {year}-{month:02d}")
+                request = {
+                    "product_type": ["reanalysis"],
+                    "format": "netcdf",
+                    "variable": [
+                        "surface_pressure",
+                        "2m_temperature",
+                        "2m_dewpoint_temperature",
+                        "10m_u_component_of_wind",
+                        "10m_v_component_of_wind",
+                        "total_precipitation",
+                    ],
+                    "year": [str(year)],
+                    "month": [f"{month:02d}"],
+                    "day": [f"{d:02d}" for d in range(1, 32)],
+                    "time": [f"{h:02d}:00" for h in range(24)],
+                    # bounding box of a single pixel around the point
+                    "area": [pt.lat + 0.125, pt.lon - 0.125, pt.lat - 0.125, pt.lon + 0.125],
+                }
+                client.retrieve("reanalysis-era5-single-levels", request, str(path))
                 written.append(path)
-                continue
-            if verbose:
-                print(f"  [fetch] {pt.nom} {year}")
-            request = {
-                "product_type": ["reanalysis"],
-                "format": "netcdf",
-                "variable": [
-                    "surface_pressure",
-                    "2m_temperature",
-                    "2m_dewpoint_temperature",
-                    "10m_u_component_of_wind",
-                    "10m_v_component_of_wind",
-                    "total_precipitation",
-                ],
-                "year": [str(year)],
-                "month": [f"{m:02d}" for m in range(1, 13)],
-                "day": [f"{d:02d}" for d in range(1, 32)],
-                "time": [f"{h:02d}:00" for h in range(24)],
-                # bounding-box d'un unique pixel autour du point
-                "area": [pt.lat + 0.125, pt.lon - 0.125, pt.lat - 0.125, pt.lon + 0.125],
-            }
-            client.retrieve("reanalysis-era5-single-levels", request, str(path))
-            written.append(path)
     return written
 
 
 def load_era5_files(paths: Iterable[Path]) -> dict[str, pd.DataFrame]:
-    """Charge un ou plusieurs fichiers NetCDF ERA5, retourne un DataFrame par
-    point de grille (identifié par sa position `lat/lon`).
+    """Load one or several ERA5 NetCDF files, one DataFrame per grid point.
 
-    Colonnes de sortie : `timestamp, pressure (hPa), temp (°C), humidity (%),
+    Each grid point is identified by its `lat/lon` position.
+
+    Output columns: `timestamp, pressure (hPa), temp (deg C), humidity (%),
     wind (m/s), rain_1h (mm), lat, lon`.
     """
     try:
@@ -138,7 +145,7 @@ def load_era5_files(paths: Iterable[Path]) -> dict[str, pd.DataFrame]:
 
 
 def _dataset_to_frame(ds) -> pd.DataFrame:
-    """Convertit un xarray.Dataset ERA5 en DataFrame Taranis."""
+    """Convert an ERA5 xarray.Dataset into a Taranis DataFrame."""
     lat = float(ds["latitude"].values.mean())
     lon = float(ds["longitude"].values.mean())
     t_k = ds["t2m"].values.squeeze()
@@ -146,7 +153,7 @@ def _dataset_to_frame(ds) -> pd.DataFrame:
     p_pa = ds["sp"].values.squeeze()
     u = ds["u10"].values.squeeze()
     v = ds["v10"].values.squeeze()
-    tp_m = ds["tp"].values.squeeze()  # cumul horaire, mètres
+    tp_m = ds["tp"].values.squeeze()  # hourly cumulative, meters
     times = pd.to_datetime(ds["time"].values)
 
     t_c = t_k - 273.15

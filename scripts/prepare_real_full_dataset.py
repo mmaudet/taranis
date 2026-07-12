@@ -1,14 +1,14 @@
-"""Prépare le grand dataset Météo-France, 62 stations sur 16 ans.
+"""Prepare the large Meteo-France dataset, 62 stations over 16 years.
 
-Entrée  : `data/mf/synop_full.csv` (téléchargé par `fetch_meteofrance_full.py`).
-Sortie  : `data/real_full_windows.npz` (fenêtres normalisées).
+Input : `data/mf/synop_full.csv` (downloaded by `fetch_meteofrance_full.py`).
+Output: `data/real_full_windows.npz` (normalised windows).
 
-Volumes attendus, ordre de grandeur :
+Expected orders of magnitude:
 
-- ~2.7 M records bruts,
-- ~2.6 M fenêtres après rééchantillonnage 3h et fenêtrage Tw=32, stride=1.
+- ~2.7 M raw records,
+- ~2.6 M windows after 3h resampling and windowing Tw=32, stride=1.
 
-C'est de quoi entraîner sérieusement TS-JEPA sur GPU.
+Enough to seriously train TS-JEPA on a GPU.
 """
 
 from __future__ import annotations

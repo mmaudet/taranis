@@ -1,16 +1,15 @@
-"""API d'inférence FastAPI pour Taranis.
+"""FastAPI inference API for Taranis.
 
-Trois endpoints :
+Three endpoints:
 
-- `POST /predict`  : accepte une fenêtre `(Tw, V)` en unités physiques,
-                     retourne probabilité, niveau d'alerte, disclaimer.
-- `GET  /health`   : sanity check + infos du modèle chargé.
-- `GET  /stations/{id}/live` : récupère les 4 derniers jours SYNOP depuis
-                     Opendatasoft pour la station demandée, calcule une
-                     prédiction sur la fenêtre courante et retourne un
-                     JSON prêt à afficher.
+- `POST /predict`: accepts a `(Tw, V)` window in physical units, returns
+  probability, alert level, disclaimer.
+- `GET  /health` : sanity check plus loaded model info.
+- `GET  /stations/{id}/live`: pulls the last 4 SYNOP days from
+  Opendatasoft for the requested station, computes a prediction on the
+  current window and returns a JSON ready to display.
 
-Lancement local :
+Local run:
 
     uv sync --extra api
     TARANIS_PROBE=runs/probe/ww_rich  \\
@@ -30,7 +29,7 @@ try:
     from fastapi import FastAPI, HTTPException
     from fastapi.responses import FileResponse
     from fastapi.staticfiles import StaticFiles
-except ImportError as e:  # pragma: no cover - installation optionnelle
+except ImportError as e:  # pragma: no cover - optional install
     raise SystemExit(
         "fastapi/requests requis. Installer avec :\n"
         "  uv sync --extra api"
@@ -41,7 +40,7 @@ from taranis.infer.inference import Predictor
 
 ROOT = Path(__file__).resolve().parent.parent.parent
 STATIC_DIR = Path(__file__).parent / "static"
-PROBE_PATH = Path(os.environ.get("TARANIS_PROBE", ROOT / "runs" / "probe" / "ww_rich"))
+PROBE_PATH = Path(os.environ.get("TARANIS_PROBE", ROOT / "runs" / "probe" / "combined"))
 
 app = FastAPI(
     title="Taranis Inference API",
@@ -50,14 +49,14 @@ app = FastAPI(
 )
 
 
-# Sert les fichiers statiques du front sous /static (CSS/JS futurs)
+# Serve the front-end static files under /static (future CSS/JS)
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
 @app.get("/")
 def index():
-    """Page HTML mobile-first, sélecteur de station et prédictions live."""
+    """Mobile-first HTML page: station selector and live predictions."""
     index_html = STATIC_DIR / "index.html"
     if not index_html.exists():
         raise HTTPException(500, "index.html manquant dans le paquet installé")
@@ -74,12 +73,12 @@ def get_predictor() -> Predictor:
 
 
 # ---------------------------------------------------------------------------
-# Schémas
+# Schemas
 # ---------------------------------------------------------------------------
 
 
 class PredictIn(BaseModel):
-    """Payload d'entrée pour /predict, fenêtre en unités physiques."""
+    """Input payload for /predict: a window in physical units."""
 
     canaux: list[str] = Field(
         ..., description="Noms des canaux, doivent correspondre à ceux du modèle"
@@ -136,12 +135,12 @@ def predict(payload: PredictIn):
 
 
 # ---------------------------------------------------------------------------
-# Récupération SYNOP live
+# Live SYNOP fetching
 # ---------------------------------------------------------------------------
 
 
 def _latest_synop_date(station_id: str):
-    """Retourne la date SYNOP la plus récente disponible pour la station."""
+    """Return the most recent SYNOP date available for the station."""
     r = requests.get(
         "https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/"
         "donnees-synop-essentielles-omm/records",
@@ -159,7 +158,7 @@ def _latest_synop_date(station_id: str):
 
 
 def _fetch_recent_synop(station_id: str, days: int = 6, end=None) -> str:
-    """Télécharge les mesures SYNOP jusqu'à `end` (ou dernière date dispo)."""
+    """Download SYNOP measurements up to `end` (or last available date)."""
     from datetime import timedelta
 
     if end is None:
@@ -187,10 +186,10 @@ def _fetch_recent_synop(station_id: str, days: int = 6, end=None) -> str:
 
 @app.get("/stations/{station_id}/live")
 def station_live(station_id: str, with_window: bool = False):
-    """Récupère les derniers jours SYNOP disponibles, calcule une prédiction et renvoie tout.
+    """Fetch the last available SYNOP days, compute a prediction and return everything.
 
-    Si `with_window=true`, la réponse inclut aussi la fenêtre par canal pour
-    afficher les sparklines côté front.
+    When `with_window=true`, the response also includes the per-channel
+    window used, so the front-end can display sparklines.
     """
     from io import StringIO
 
@@ -199,7 +198,7 @@ def station_live(station_id: str, with_window: bool = False):
 
     try:
         csv_text = _fetch_recent_synop(station_id, days=6)
-    except Exception as e:  # pragma: no cover - dépend du réseau
+    except Exception as e:  # pragma: no cover - depends on the network
         raise HTTPException(status_code=502, detail=f"SYNOP indisponible : {e}") from e
 
     stations = read_synop_csv(StringIO(csv_text))

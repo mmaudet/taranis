@@ -1,13 +1,13 @@
-"""Génère un dataset synthétique à pas 3h, aligné avec la géométrie du réel.
+"""Generate a synthetic dataset at a 3h step, aligned with the real geometry.
 
-Il sert **exclusivement** au sim-to-real de l'étape 7 : pour comparer un
-encodeur pré-entraîné sur synthétique à un encodeur pré-entraîné sur réel,
-il faut que les deux acceptent des fenêtres de même forme.
+Used **exclusively** for the sim-to-real of step 7: to compare an encoder
+pre-trained on synthetic data with one pre-trained on real data, both
+must accept windows of the same shape.
 
-Sortie :
+Outputs:
 
-- `data/synth3h_raw.csv`     : série brute au pas 3 h.
-- `data/synth3h_windows.npz` : fenêtres Tw=32, H=8, split chronologique.
+- `data/synth3h_raw.csv`     : raw series at 3h step.
+- `data/synth3h_windows.npz` : windows Tw=32, H=8, chronological split.
 """
 
 from __future__ import annotations
@@ -32,8 +32,8 @@ DATA.mkdir(parents=True, exist_ok=True)
 
 
 def main(
-    days: float = 365.0 * 5,      # 5 ans, pour la même volumétrie que le réel
-    step_minutes: int = 180,      # 3 h, aligné SYNOP
+    days: float = 365.0 * 5,      # 5 years, matches the real data volume
+    step_minutes: int = 180,      # 3 h, aligned with SYNOP
     storms_per_day: float = 0.4,
     seed: int = 0,
     Tw: int = 32,
@@ -41,11 +41,11 @@ def main(
     stride: int = 1,
 ):
     print(f"Génération : {days:.0f} jours à {step_minutes} min, ~{storms_per_day} orages/jour")
-    # profil réajusté : l'approche doit rester visible avec un pas si grossier
+    # rescaled profile: approach must remain visible at such a coarse step
     profile = StormProfile(
-        approach_min=8 * 60,   # 8 h d'approche, environ 3 pas visibles avant l'onset
-        active_min=3 * 60,     # 3 h d'orage actif, 1 pas
-        recovery_min=9 * 60,   # 9 h de récupération, 3 pas
+        approach_min=8 * 60,   # 8 h of approach, ~3 steps visible before onset
+        active_min=3 * 60,     # 3 h of active storm, 1 step
+        recovery_min=9 * 60,   # 9 h of recovery, 3 steps
     )
     df = generate(
         days=days,

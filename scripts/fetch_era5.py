@@ -1,25 +1,25 @@
-"""Télécharge ERA5 pour un panel de points de grille adaptés au projet.
+"""Download ERA5 for a panel of grid points suitable for the project.
 
-**Nécessite un compte CDS Copernicus** :
+**Requires a Copernicus CDS account**:
 
-1. Créer un compte sur https://cds.climate.copernicus.eu/
-2. Récupérer le token API sur https://cds.climate.copernicus.eu/how-to-api
-3. Placer le token dans `~/.cdsapirc`
-4. Sur la fiche du dataset `reanalysis-era5-single-levels`, accepter les
-   conditions d'usage.
+1. Create an account at https://cds.climate.copernicus.eu/
+2. Fetch the API token from https://cds.climate.copernicus.eu/how-to-api
+3. Place the token in `~/.cdsapirc`
+4. On the `reanalysis-era5-single-levels` dataset page, accept the terms
+   of use.
 
-Ensuite, lancer simplement :
+Then simply run:
 
     uv run python scripts/fetch_era5.py
 
-Volumes attendus, en configuration par défaut :
+Expected volumes, default configuration:
 
-- 10 points × 15 ans × 24 obs/jour × 365 jours = **~1.3 M observations**
-- Un fichier NetCDF par (point, année), quelques dizaines de Mo au total.
-- Téléchargement CDS lent (queue), compter **plusieurs heures** la première fois.
+- 10 points x 15 years x 24 obs/day x 365 days = ~1.3 M observations.
+- One NetCDF file per (point, year), a few dozen MB total.
+- CDS downloads are slow (queue); expect **several hours** the first time.
 
-Après téléchargement, `scripts/prepare_era5_dataset.py` (à écrire) prendra le
-relais pour construire les fenêtres.
+Once downloaded, `scripts/prepare_era5_dataset.py` (to be written) takes
+over to build the windows.
 """
 
 from __future__ import annotations
@@ -31,32 +31,47 @@ from taranis.data.era5 import GridPoint, fetch_era5
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "data" / "era5"
 
-# 10 points de grille, choisis pour balayer une variété de régimes :
-# - Alpes (Grenoble, Embrun, Chamonix),
-# - Pyrénées (Tarbes, Ariège),
-# - Sud méditerranéen (Nice, Montpellier, Marseille),
-# - Plaines (Lyon, Bordeaux, Paris).
+# 13 grid points, diversified panel for a mountain-hiker model.
+#
+# Plains and cities (5): Lyon, Bordeaux, Paris, Marseille, Nice.
+#   Useful contrast: the model must distinguish mountain-specific dynamics
+#   from plain and coastal ones.
+#
+# Mid-mountain 1000-1500 m (3): Chamonix valley, St-Girons (central
+#   Pyrenees), Puy-de-Sancy (Massif Central).
+#
+# High altitude > 2000 m (5): Mont-Blanc, Vanoise, Ecrins, Mercantour,
+#   Vignemale. At this altitude the ERA5 surface pressure hovers around
+#   750-800 hPa and convective regimes are fundamentally different.
 GRID_POINTS = [
-    GridPoint(lat=45.19, lon=5.72, nom="grenoble"),
-    GridPoint(lat=44.57, lon=6.50, nom="embrun"),
-    GridPoint(lat=45.92, lon=6.87, nom="chamonix"),
-    GridPoint(lat=43.24, lon=0.08, nom="tarbes"),
-    GridPoint(lat=42.99, lon=1.10, nom="foix"),
-    GridPoint(lat=43.70, lon=7.27, nom="nice"),
-    GridPoint(lat=43.61, lon=3.88, nom="montpellier"),
-    GridPoint(lat=43.30, lon=5.40, nom="marseille"),
-    GridPoint(lat=44.84, lon=-0.58, nom="bordeaux"),
+    # Plains and cities
+    GridPoint(lat=45.72, lon=5.09, nom="lyon"),
+    GridPoint(lat=44.83, lon=-0.58, nom="bordeaux"),
     GridPoint(lat=48.85, lon=2.35, nom="paris"),
+    GridPoint(lat=43.30, lon=5.40, nom="marseille"),
+    GridPoint(lat=43.70, lon=7.27, nom="nice"),
+    # Mid-mountain
+    GridPoint(lat=45.93, lon=6.87, nom="chamonix_vallee"),
+    GridPoint(lat=42.98, lon=1.13, nom="st_girons"),
+    GridPoint(lat=45.53, lon=2.81, nom="puy_de_sancy"),
+    # High altitude > 2000 m
+    GridPoint(lat=45.85, lon=6.87, nom="mont_blanc"),
+    GridPoint(lat=45.35, lon=6.85, nom="vanoise"),
+    GridPoint(lat=44.95, lon=6.35, nom="ecrins"),
+    GridPoint(lat=44.15, lon=7.15, nom="mercantour"),
+    GridPoint(lat=42.80, lon=0.05, nom="vignemale"),
 ]
 
-YEARS = list(range(2010, 2025))  # 15 ans, aligné SYNOP
+YEARS = list(range(2010, 2025))  # 15 years, aligned with SYNOP
 
 
 def main():
+    n_files = len(GRID_POINTS) * len(YEARS) * 12
     print(f"Téléchargement ERA5 vers {OUT}")
-    print(f"{len(GRID_POINTS)} points, {len(YEARS)} ans → {len(GRID_POINTS) * len(YEARS)} fichiers")
-    print("Chaque fichier est mis en file d'attente côté CDS, comptez plusieurs")
-    print("heures la première fois (téléchargements séquentiels).\n")
+    print(f"{len(GRID_POINTS)} points × {len(YEARS)} ans × 12 mois = {n_files} fichiers")
+    print("Découpage mensuel pour rester sous les limites de coût CDS.")
+    print("La queue CDS est plus rapide la nuit et le week-end.")
+    print("Les fichiers déjà présents sont conservés, on peut reprendre à tout moment.\n")
 
     written = fetch_era5(GRID_POINTS, YEARS, OUT)
     print(f"\n{len(written)} fichiers présents dans {OUT}")

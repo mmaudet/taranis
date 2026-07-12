@@ -1,4 +1,4 @@
-"""Tests unitaires par brique + assemblage TS-JEPA."""
+"""Unit tests per building block plus TS-JEPA assembly."""
 
 from __future__ import annotations
 
@@ -28,8 +28,8 @@ def test_patch_embed_forme():
 
 
 def test_patch_embed_deux_patches_differents_valeurs_differentes():
-    """Preuve que deux patches distincts donnent des embeddings distincts,
-    autrement dit PatchEmbed n'écrase pas l'information."""
+    """Two distinct patches must yield distinct embeddings,
+    i.e. PatchEmbed does not squash the information."""
     torch.manual_seed(0)
     layer = PatchEmbed(patch_len=4, n_canaux=2, d_model=8)
     x = torch.zeros(1, 8, 2)
@@ -61,7 +61,7 @@ def test_transformer_encoder_multiples_couches():
     assert out.shape == x.shape
 
 
-# --- 5c. Masquage par blocs --- #
+# --- 5c. Block masking --- #
 
 
 def test_masque_disjoint_et_complet():
@@ -74,24 +74,24 @@ def test_masque_disjoint_et_complet():
 
 
 def test_masque_blocs_non_chevauchants():
-    """Sur plusieurs seeds, on vérifie deux propriétés :
-    - la cible contient exactement `n_blocks * block_size` positions uniques,
-    - les blocs ne se chevauchent pas (au plus un « grand » saut entre blocs).
+    """Across several seeds, check two properties:
+    - the target holds exactly `n_blocks * block_size` unique positions,
+    - blocks do not overlap (at most one "big" jump between blocks).
     """
     n_blocks, block_size = 2, 3
     for seed in range(20):
         g = torch.Generator().manual_seed(seed)
         _, tgt = sample_block_mask(n_patches=12, n_blocks=n_blocks, block_size=block_size, generator=g)
         tgt_sorted = tgt.sort().values.tolist()
-        # bonne taille et pas de doublon
+        # correct size, no duplicates
         assert len(tgt_sorted) == n_blocks * block_size
         assert len(set(tgt_sorted)) == n_blocks * block_size
-        # les blocs ne se chevauchent pas : par construction, deux positions
-        # consécutives dans la même série ne peuvent pas être plus rapprochées
-        # que dans un bloc unique.
+        # blocks do not overlap: by construction, two consecutive positions
+        # in the same series cannot be closer than they would be within a
+        # single block.
         diffs = [tgt_sorted[i + 1] - tgt_sorted[i] for i in range(len(tgt_sorted) - 1)]
         assert min(diffs) >= 1
-        # au plus n_blocks - 1 sauts inter-blocs
+        # at most n_blocks - 1 inter-block jumps
         big_jumps = [d for d in diffs if d > 1]
         assert len(big_jumps) <= n_blocks - 1
 
@@ -114,11 +114,11 @@ def test_ema_wrapper_converge_vers_source():
     torch.manual_seed(1)
     source = TransformerEncoder(d_model=16, n_layers=2, n_heads=4)
     ema = EMAWrapper(source)
-    # perturber source
+    # perturb source
     with torch.no_grad():
         for p in source.parameters():
             p.add_(torch.randn_like(p) * 0.5)
-    # avant update : ema != source
+    # before update: ema != source
     diff_before = sum(
         (a - b).abs().mean().item()
         for a, b in zip(ema.encoder.parameters(), source.parameters(), strict=True)
@@ -187,24 +187,24 @@ def test_target_encoder_ne_recoit_pas_gradient():
     pred, z_tgt = model(x, ctx, tgt)
     loss = jepa_loss(pred, z_tgt)
     loss.backward()
-    # aucun paramètre de target_encoder ne doit avoir de gradient
+    # no target_encoder parameter must carry a gradient
     for p in model.target_encoder.parameters():
         assert p.grad is None
 
 
 def test_embedding_stats_sur_batch_aleatoire():
-    """Sur un grand batch de bruit gaussien, std ~ 1 et le rang effectif
-    approche la dimension D."""
+    """On a large batch of Gaussian noise, std ~ 1 and the effective rank
+    approaches the dimension D."""
     torch.manual_seed(0)
     D = 32
-    z = torch.randn(64, 32, D)  # 2048 échantillons, largement > D
+    z = torch.randn(64, 32, D)  # 2048 samples, far above D
     s = embedding_stats(z)
     assert 0.9 < s["std_moy"] < 1.1
-    assert s["eff_rank"] > 0.8 * D  # proche de D
+    assert s["eff_rank"] > 0.8 * D  # close to D
 
 
 def test_embedding_stats_detecte_collapse():
-    """Si tous les embeddings sont constants, std=0 et rang effectif = 1."""
+    """If every embedding is constant, std=0 and effective rank = 1."""
     z = torch.ones(4, 10, 32) * 0.5
     s = embedding_stats(z)
     assert s["std_moy"] < 1e-6

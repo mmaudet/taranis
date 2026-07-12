@@ -1,13 +1,13 @@
-"""Figures comparatives synthétique vs réel pour l'étape 1 ter.
+"""Comparison figures synthetic vs real for step 1 ter.
 
-Trois figures :
+Three figures:
 
-- step1c_stations_map.png  : positionnement schématique des 4 stations sur
-                              un fond simplifié + altitudes.
-- step1c_timeseries.png    : un échantillon de série temporelle sur une
-                              semaine, pour chaque station, canaux superposés.
-- step1c_comparison.png    : histogrammes comparant les distributions
-                              synthétique vs réel pour les 4 canaux.
+- step1c_stations_map.png : schematic positioning of the 4 stations on a
+                             simplified background, with altitudes.
+- step1c_timeseries.png   : a sample time series over a week for each
+                             station, channels overlaid.
+- step1c_comparison.png   : histograms comparing synthetic vs real
+                             distributions for the 4 channels.
 """
 
 from __future__ import annotations
@@ -55,7 +55,7 @@ def figure_stations_map(stations):
 
 
 def figure_timeseries(stations):
-    """Une semaine (juillet 2023) pour chacune des 4 stations."""
+    """One week (July 2023) for each of the 4 stations."""
     fig, axes = plt.subplots(4, 1, figsize=(11, 8), sharex=True)
     labels_pretty = {
         "07471": "Le Puy (833 m)",
@@ -72,7 +72,7 @@ def figure_timeseries(stations):
         ax2.plot(window["timestamp"], window["rain_1h"], color="#B00020",
                  linestyle="-", drawstyle="steps-post", label="Pluie 1h")
         ax2.set_ylabel("Pluie 1h (mm)", color="#B00020")
-        # marquer les onsets
+        # mark the onsets
         onsets = window[window["storm_onset"]]
         for t in onsets["timestamp"]:
             ax.axvline(t, color="#B00020", alpha=0.4, linewidth=0.8)
@@ -86,7 +86,7 @@ def figure_timeseries(stations):
 
 
 def figure_comparison():
-    """Distributions synthétique vs réel, par canal."""
+    """Synthetic vs real distributions, per channel."""
     synth_raw = pd.read_csv(DATA / "synthetic_raw.csv")
 
     stations = read_synop_csv(DATA / "mf" / "synop_2020_2024_4stations.csv")

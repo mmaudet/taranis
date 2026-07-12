@@ -1,15 +1,15 @@
-"""Entraîne TS-JEPA sur un dataset préparé, config YAML.
+"""Train TS-JEPA on a prepared dataset, YAML config.
 
-Usage :
+Usage:
 
     uv run python scripts/train_tsjepa.py configs/tsjepa_synth.yaml
     uv run python scripts/train_tsjepa.py configs/tsjepa_real.yaml
 
-Sortie :
+Outputs:
 
-- `<output>/model.pt`   : checkpoint du modèle (state_dict + config).
-- `<output>/log.json`   : historique de perte + statistiques d'embeddings.
-- `<output>/config.yaml`: copie de la config utilisée.
+- `<output>/model.pt`   : model checkpoint (state_dict + config).
+- `<output>/log.json`   : loss history + embedding statistics.
+- `<output>/config.yaml`: copy of the config used.
 """
 
 from __future__ import annotations

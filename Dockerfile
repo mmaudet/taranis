@@ -10,7 +10,7 @@ ENV PYTHONUNBUFFERED=1 \
     UV_LINK_MODE=copy \
     UV_PROJECT_ENVIRONMENT=/opt/venv \
     PATH=/opt/venv/bin:$PATH \
-    TARANIS_PROBE=/app/runs/probe/ww_rich
+    TARANIS_PROBE=/app/runs/probe/combined
 
 # uv pour installer les deps rapidement
 COPY --from=ghcr.io/astral-sh/uv:0.11.16 /uv /usr/local/bin/uv

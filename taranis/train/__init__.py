@@ -1,4 +1,4 @@
-"""Boucle d'entraînement TS-JEPA et utilitaires associés."""
+"""TS-JEPA training loop and related utilities."""
 
 from taranis.train.tsjepa_trainer import (
     TrainerConfig,

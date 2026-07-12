@@ -1,20 +1,20 @@
-"""Boucle d'entraînement TS-JEPA, avec surveillance du collapse.
+"""TS-JEPA training loop with collapse monitoring.
 
-Le trainer suit un motif simple, lisible étape par étape :
+The trainer follows a simple, readable pattern:
 
-1. À chaque batch, on tire un masque par blocs (partagé sur le batch).
-2. On calcule la perte SmoothL1 en espace latent, on rétropropage.
-3. On clippe les gradients pour la stabilité.
-4. On met à jour l'encodeur cible par EMA, avec un `tau` qui monte
-   progressivement de sa valeur initiale vers 0.999 (planning cosine).
-5. Le taux d'apprentissage suit un **warmup** linéaire, puis une
-   **décroissance cosine** vers zéro.
-6. À intervalle régulier, on évalue sur un batch de validation et on mesure :
-    - la perte de validation,
-    - l'écart-type moyen des embeddings,
-    - le rang effectif de leur covariance.
+1. At each batch, sample a block mask (shared across the batch).
+2. Compute the SmoothL1 loss in latent space, backpropagate.
+3. Clip gradients for stability.
+4. Update the target encoder by EMA, with `tau` rising cosine-style from
+   its initial value up to 0.999.
+5. The learning rate follows a linear **warmup** then a **cosine decay**
+   to zero.
+6. Every so often, evaluate on a validation batch and measure:
+    - validation loss,
+    - mean per-dimension embedding standard deviation,
+    - effective rank of the embedding covariance.
 
-Ces trois indicateurs sont les seuls garde-fous fiables contre le collapse.
+These three indicators are the only reliable guardrails against collapse.
 """
 
 from __future__ import annotations
@@ -39,12 +39,12 @@ from taranis.models import (
 )
 
 # --------------------------------------------------------------------------- #
-# Utilitaires de planning
+# Scheduling utilities
 # --------------------------------------------------------------------------- #
 
 
 def cosine_schedule(step: int, total: int, v_start: float, v_end: float) -> float:
-    """Décroissance / croissance cosine entre `v_start` et `v_end`."""
+    """Cosine ramp between `v_start` and `v_end` (either direction)."""
     if total <= 0:
         return v_end
     t = min(step, total) / total
@@ -52,7 +52,7 @@ def cosine_schedule(step: int, total: int, v_start: float, v_end: float) -> floa
 
 
 def warmup_cosine_lr(step: int, warmup: int, total: int, lr_max: float, lr_min: float = 0.0) -> float:
-    """LR linéairement de 0 à `lr_max` sur `warmup` pas, puis cosine vers `lr_min`."""
+    """LR linear from 0 to `lr_max` over `warmup` steps, then cosine to `lr_min`."""
     if step < warmup:
         return lr_max * (step + 1) / max(1, warmup)
     return cosine_schedule(step - warmup, max(1, total - warmup), lr_max, lr_min)
@@ -65,7 +65,7 @@ def warmup_cosine_lr(step: int, warmup: int, total: int, lr_max: float, lr_min: 
 
 @dataclass
 class TrainerConfig:
-    # boucle
+    # loop
     n_steps: int = 2000
     batch_size: int = 128
     val_every: int = 100
@@ -79,18 +79,18 @@ class TrainerConfig:
     weight_decay: float = 1e-4
     grad_clip: float = 1.0
 
-    # EMA de la cible
+    # target EMA
     tau_start: float = 0.996
     tau_end: float = 0.999
 
-    # masquage
+    # masking
     n_blocks: int = 2
     block_size: int = 3
 
-    # divers
+    # misc
     seed: int = 0
     device: str = "cpu"
-    log_dir: str | None = None  # écriture JSON si fourni
+    log_dir: str | None = None  # write JSON when provided
 
 
 @dataclass
@@ -107,9 +107,9 @@ class TrainerState:
 
 
 class TSJEPATrainer:
-    """Entraîneur TS-JEPA sur un tenseur `(N, Tw, V)` fourni en mémoire.
+    """TS-JEPA trainer over an in-memory tensor `(N, Tw, V)`.
 
-    Interface d'usage typique :
+    Typical usage:
 
         trainer = TSJEPATrainer(model_config, train_config, X_train, X_val)
         state = trainer.fit()
@@ -139,7 +139,7 @@ class TSJEPATrainer:
 
         self.train_loader = self._make_loader(X_train, shuffle=True)
         self.val_loader = self._make_loader(X_val, shuffle=False)
-        # itérateur infini sur le val, pour piocher `val_batches` à chaque évaluation
+        # infinite val iterator, so we can pull `val_batches` per evaluation
         self._val_iter = None
 
         self.state = TrainerState()
@@ -194,7 +194,7 @@ class TSJEPATrainer:
 
     def train_step(self, x: torch.Tensor) -> float:
         self.model.train()
-        # masque par batch, partagé
+        # per-batch mask, shared
         ctx, tgt = sample_block_mask(
             self.mcfg.n_patches, self.tcfg.n_blocks, self.tcfg.block_size
         )
@@ -209,7 +209,7 @@ class TSJEPATrainer:
 
         self.opt.zero_grad()
         loss.backward()
-        # clip pour éviter les explosions au démarrage
+        # clip to avoid gradient explosions at startup
         nn.utils.clip_grad_norm_(self.model.parameters(), self.tcfg.grad_clip)
         self.opt.step()
 

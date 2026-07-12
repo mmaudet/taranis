@@ -1,14 +1,13 @@
-"""Prepare the full SYNOP dataset with **true storm labels**.
+"""Short-horizon SYNOP dataset, 6h variant (Track B).
 
-Step 10. Labels no longer come from `rr1 > 2 mm` but from the WMO 4677
-**present weather code** reported by the observer:
+- Tw = 8 SYNOP steps = 24 h of context.
+- H  = 2 SYNOP steps = 6 h of anticipation.
 
-- Codes **17, 29, 91-99**: storm observed in the strict sense.
-- `storm_active` window extended by +/- 1 SYNOP step (+/- 3 h) to cover
-  the typical event duration.
+Trade-off between H=1 (3h, too rare) and H=8 (24h, less accurate in
+anticipation). Positive prevalence rises from ~0.04 % (H=1) to
+~0.07-0.10 % (H=2), which makes calibration workable.
 
-Output: `data/real_full_ww_windows.npz`. Enriched channels (5), same as
-step 9; only the label changes.
+Output: `data/real_ww_h2_windows.npz`.
 """
 
 from __future__ import annotations
@@ -30,10 +29,10 @@ from taranis.data import (
 ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 CSV = DATA / "mf" / "synop_full.csv"
-OUT = DATA / "real_full_ww_windows.npz"
+OUT = DATA / "real_ww_h2_windows.npz"
 
-Tw = 32
-H = 8
+Tw = 8
+H = 2
 STRIDE = 1
 STEP_MIN = 180
 
@@ -51,10 +50,7 @@ def _split_by_date(df: pd.DataFrame, start: str, end: str) -> pd.DataFrame:
 
 def main():
     if not CSV.exists():
-        raise SystemExit(
-            f"Fichier manquant : {CSV}\n"
-            "Lancer d'abord : uv run python scripts/fetch_meteofrance_full.py"
-        )
+        raise SystemExit(f"Fichier manquant : {CSV}")
 
     print(f"Lecture : {CSV}")
     stations = read_synop_csv(CSV)
@@ -66,8 +62,7 @@ def main():
     for i, (_sid, raw) in enumerate(stations.items(), 1):
         d = prepare_station(raw, freq="3h", label_source="ww",
                             ww_window_before=1, ww_window_after=1)
-        n_onsets = int(d["storm_onset"].sum())
-        total_onsets += n_onsets
+        total_onsets += int(d["storm_onset"].sum())
 
         for split, (t_start, t_end) in SPLITS.items():
             sub = _split_by_date(d, t_start, t_end)
@@ -75,8 +70,7 @@ def main():
             if len(sub) < Tw + H:
                 continue
             ds = make_windows(
-                sub,
-                Tw=Tw, H=H, stride=STRIDE,
+                sub, Tw=Tw, H=H, stride=STRIDE,
                 label_col="storm_onset",
                 canaux=CANAUX_MF_RICH,
             )
@@ -84,7 +78,7 @@ def main():
 
         if i % 10 == 0 or i == len(stations):
             n_train = sum(len(d) for d in all_splits["train"])
-            print(f"  [{i}/{len(stations)}]  cumul fenêtres train : {n_train:,}  |  onsets cumulés : {total_onsets:,}")
+            print(f"  [{i}/{len(stations)}]  fenêtres train : {n_train:,}  onsets : {total_onsets:,}")
 
     def _concat(datasets):
         X = np.concatenate([d.X for d in datasets], axis=0)
@@ -97,13 +91,13 @@ def main():
     X_test, y_test, ts_test = _concat(all_splits["test"])
 
     print(f"\nSplits : train={len(y_train):,}, val={len(y_val):,}, test={len(y_test):,}")
+    print(f"Forme X_train : {X_train.shape}")
     print(
-        "Prévalence positive (orage à l'obs, WMO) : "
+        "Prévalence positive : "
         f"train={y_train.mean():.4f}, val={y_val.mean():.4f}, test={y_test.mean():.4f}"
     )
 
     mean, std = channel_stats(X_train)
-    OUT.parent.mkdir(parents=True, exist_ok=True)
     np.savez_compressed(
         OUT,
         X_train=normalize(X_train, mean, std),
@@ -124,7 +118,7 @@ def main():
         source=(
             "meteo-france synop, opendatasoft, "
             f"{len(stations)} stations, 2010-2026, "
-            "labels WMO 4677 (observed storm)"
+            "labels WMO 4677, Tw=8 (24h), H=2 (6h) for portable sensor"
         ),
     )
     print(f"OK : {OUT}, {OUT.stat().st_size / 1_000_000:.1f} Mo")

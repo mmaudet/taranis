@@ -1,15 +1,15 @@
-"""Entraîne la baseline physique M0 sur les données Météo-France réelles.
+"""Train the M0 physics baseline on the real Meteo-France data.
 
-Sortie :
+Outputs:
 
-- `runs/baseline_real/report.json` : métriques test + coefficients + seuil.
-- `docs/assets/step2_real_curves.png` : ROC et courbe précision-rappel test.
+- `runs/baseline_real/report.json`   : test metrics + coefficients + threshold.
+- `docs/assets/step2_real_curves.png`: test ROC and precision-recall curves.
 
-Ce script est jumeau de `train_baseline.py`. Différences :
+Twin of `train_baseline.py`. Differences:
 
-- Pas de temps 3 heures (SYNOP) au lieu de 10 minutes,
-- Lags physiques adaptés : court = 3 h, long = 12 h,
-- Fichier d'entrée `data/real_windows.npz` au lieu du synthétique.
+- 3-hour time step (SYNOP) instead of 10 minutes,
+- Physical lags adapted: short = 3 h, long = 12 h,
+- Input file `data/real_windows.npz` instead of the synthetic one.
 """
 
 from __future__ import annotations
@@ -78,7 +78,7 @@ def main():
     print(f"Train {X_train.shape}, val {X_val.shape}, test {X_test.shape}")
     print(f"Prévalence : train={y_train.mean():.3f}, test={y_test.mean():.3f}")
 
-    # sur des données à pas 3h : court = 3h (1 pas), long = 12h (4 pas)
+    # on 3h-step data: short = 3h (1 step), long = 12h (4 steps)
     model = BaselinePhysics(
         step_minutes=step_min,
         short_lag_min=180,

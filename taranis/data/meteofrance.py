@@ -1,25 +1,25 @@
-"""Chargeur de données réelles Météo-France, format SYNOP.
+"""Real-data loader for Meteo-France SYNOP format.
 
-Source : portail Opendatasoft "donnees-synop-essentielles-omm", qui héberge
-une copie des données SYNOP officielles de Météo-France, rafraîchies en
-continu et accessibles sans clé.
+Source: Opendatasoft portal "donnees-synop-essentielles-omm", which hosts
+a copy of the official Meteo-France SYNOP data, refreshed continuously and
+accessible without a key.
 
-- Fréquence typique : 3 heures (parfois horaire pour certaines stations récentes).
-- Canaux utilisés : `pres` (pression, Pa), `tc` (température, °C), `u`
-  (humidité relative, %), `ff` (vitesse du vent, m/s).
-- Label proxy : `rr1` (précipitations sur la dernière heure, mm) sert à
-  construire une étiquette d'événement pluvieux fort dans l'horizon.
+- Typical frequency: 3 hours (sometimes hourly for recent stations).
+- Channels used: `pres` (pressure, Pa), `tc` (temperature, deg C), `u`
+  (relative humidity, %), `ff` (wind speed, m/s).
+- Proxy label: `rr1` (rainfall over the last hour, mm) is used to build a
+  heavy-rain event label in the horizon.
 
-Contrairement au synthétique, les données réelles présentent :
+Unlike the synthetic data, the real data exhibit:
 
-- des **valeurs manquantes** (NaN) sporadiques,
-- une **fréquence hétérogène** selon les stations,
-- une **saisonnalité forte** liée au calendrier réel,
-- des **régimes atypiques** que le générateur synthétique ne modélise pas.
+- sporadic **missing values** (NaN),
+- **heterogeneous frequency** across stations,
+- **strong seasonality** tied to the actual calendar,
+- **atypical regimes** that the synthetic generator does not model.
 
-Le chargeur retourne un DataFrame par station, aligné sur une grille de temps
-régulière (rééchantillonnage à 3h par défaut), avec les manquants interpolés
-ou marqués selon la stratégie choisie.
+The loader returns one DataFrame per station, aligned on a regular time
+grid (default resampling at 3h), with missing values interpolated or flagged
+according to the chosen strategy.
 """
 
 from __future__ import annotations
@@ -30,37 +30,37 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# Canaux "de base" utilisés par la baseline M0 et le TS-JEPA v1
+# "Base" channels used by baseline M0 and TS-JEPA v1
 CANAUX_MF = ("pressure", "temp", "humidity", "wind")
 
-# Canaux "enrichis" pour l'étape 9 : on ajoute la rafale à 10 min, très
-# informative pour un pré-orage. La baseline M0 ne les utilise pas (elle lit
-# les 4 premiers canaux seulement), mais TS-JEPA les voit.
+# "Rich" channels for step 9: we add the 10-min gust, very informative for
+# a pre-storm situation. Baseline M0 does not use them (it reads only the
+# first 4 channels), but TS-JEPA sees them.
 CANAUX_MF_RICH = ("pressure", "temp", "humidity", "wind", "wind_gust")
 
 _COLONNES_BRUT = {
     "pres": "pressure_pa",   # Pa
-    "pmer": "pressure_mer_pa",  # Pa, niveau mer
-    "tc": "temp",            # °C
+    "pmer": "pressure_mer_pa",  # Pa, sea level
+    "tc": "temp",            # deg C
     "u": "humidity",         # %
     "ff": "wind",            # m/s
     "rr1": "rain_1h",        # mm
     "rr3": "rain_3h",        # mm
-    "raf10": "wind_gust",    # m/s, rafale sur 10 min
-    "dd": "wind_dir",        # degrés
-    "ww": "weather_code",    # code WMO 4677 (temps présent)
+    "raf10": "wind_gust",    # m/s, 10-min gust
+    "dd": "wind_dir",        # degrees
+    "ww": "weather_code",    # WMO code 4677 (present weather)
     "date": "timestamp",
     "numer_sta": "station_id",
     "nom": "station_name",
     "altitude": "altitude_m",
 }
 
-# codes WMO 4677 correspondant à un orage observé, au sens strict
+# WMO 4677 codes corresponding to an observed storm, strictly speaking
 # https://library.wmo.int/records/item/35713 (table 4677)
-# - 17 : orage sans précipitation à la station
-# - 29 : orage à la dernière heure, avec ou sans précipitation
-# - 91 à 94 : pluie légère à forte avec orage récent
-# - 95 à 99 : orage à l'observation (95 léger, 97 fort, 99 grêle)
+# - 17: storm without precipitation at station
+# - 29: storm within the last hour, with or without precipitation
+# - 91 to 94: light to heavy rain with a recent storm
+# - 95 to 99: storm at observation time (95 light, 97 heavy, 99 hail)
 CODES_ORAGE_WMO = (17, 29, 91, 92, 93, 94, 95, 96, 97, 98, 99)
 
 
@@ -75,21 +75,21 @@ def read_synop_csv(
     path: str | Path,
     stations: tuple[str, ...] | None = None,
 ) -> dict[str, pd.DataFrame]:
-    """Lit un CSV SYNOP téléchargé, retourne un DataFrame par station.
+    """Read a downloaded SYNOP CSV and return one DataFrame per station.
 
-    Format d'entrée attendu : CSV point-virgule, colonnes brutes Opendatasoft
-    (`numer_sta`, `nom`, `altitude`, `date`, `pres`, `tc`, `u`, `ff`, ...).
+    Expected input format: semicolon-separated CSV with the raw Opendatasoft
+    columns (`numer_sta`, `nom`, `altitude`, `date`, `pres`, `tc`, `u`, `ff`, ...).
 
-    Retour
-    ------
-    dict[station_id -> DataFrame], chaque DataFrame indexé chronologiquement,
-    avec les colonnes renommées et le canal `pressure` en hPa.
+    Returns
+    -------
+    dict[station_id -> DataFrame], each DataFrame chronologically indexed,
+    with renamed columns and the `pressure` channel in hPa.
     """
     df = pd.read_csv(path, sep=";", dtype={"numer_sta": str})
-    df["numer_sta"] = df["numer_sta"].str.zfill(5)  # préserve le zéro de tête
+    df["numer_sta"] = df["numer_sta"].str.zfill(5)  # preserve leading zero
     df = df.rename(columns=_COLONNES_BRUT)
     df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True).dt.tz_convert(None)
-    # pressions Pa -> hPa, colonnes optionnelles
+    # pressures Pa -> hPa, optional columns
     df["pressure"] = df["pressure_pa"] / 100.0
     df = df.drop(columns=["pressure_pa"])
     if "pressure_mer_pa" in df.columns:
@@ -113,16 +113,16 @@ def resample_regular(
     freq: str = "3h",
     max_gap_hours: int = 6,
 ) -> pd.DataFrame:
-    """Rééchantillonne un DataFrame station sur une grille régulière.
+    """Resample a station DataFrame onto a regular grid.
 
-    - On aligne sur la grille `freq` (par défaut 3h, aligné sur les heures UTC 00, 03, ...).
-    - Les mesures manquantes sont interpolées linéairement pour de petits trous
-      (jusqu'à `max_gap_hours`). Au delà, elles restent NaN et seront filtrées
-      côté fenêtrage.
+    - Aligns on the `freq` grid (default 3h, aligned on UTC hours 00, 03, ...).
+    - Missing measurements are linearly interpolated for small gaps
+      (up to `max_gap_hours`). Beyond that they remain NaN and will be
+      filtered out at the windowing stage.
 
-    Colonnes conservées : timestamp, pressure, temp, humidity, wind, rain_1h.
+    Columns kept: timestamp, pressure, temp, humidity, wind, rain_1h.
     """
-    # colonnes à garder si disponibles (le fichier peut ne pas tout contenir)
+    # columns to keep if available (the file may not contain everything)
     optional = ["pressure_mer", "wind_gust", "rain_3h", "wind_dir", "weather_code"]
     keep = ["timestamp", "pressure", "temp", "humidity", "wind", "rain_1h"]
     for c in optional:
@@ -130,24 +130,24 @@ def resample_regular(
             keep.append(c)
     d = df[keep].copy()
     d = d.set_index("timestamp").sort_index()
-    # dédoublonnage des timestamps identiques (rare mais présent sur certaines stations)
+    # deduplicate identical timestamps (rare but present on some stations)
     d = d[~d.index.duplicated(keep="first")]
-    # grille régulière
+    # regular grid
     idx = pd.date_range(
         start=d.index.min().floor(freq),
         end=d.index.max().ceil(freq),
         freq=freq,
     )
     d = d.reindex(idx)
-    # interpolation limitée sur les canaux physiques continus
+    # limited interpolation on continuous physical channels
     limit = max(1, max_gap_hours // int(freq.rstrip("h")))
     continu = [c for c in ["pressure", "temp", "humidity", "wind",
                            "pressure_mer", "wind_gust"] if c in d.columns]
     d[continu] = d[continu].interpolate(method="time", limit=limit, limit_area="inside")
-    # les rafales manquantes sont un peu suspectes ; à défaut, on garde le vent
+    # missing gusts are somewhat suspicious; as a fallback we keep the wind
     if "wind_gust" in d.columns:
         d["wind_gust"] = d["wind_gust"].fillna(d["wind"])
-    # rain_1h : les manquants sont laissés NaN (on ne veut pas inventer de pluie)
+    # rain_1h: missing values are left as NaN (we do not want to invent rain)
     d = d.reset_index().rename(columns={"index": "timestamp"})
     return d
 
@@ -157,27 +157,27 @@ def build_storm_labels(
     seuil_mm: float = 2.0,
     duration_steps: int = 1,
 ) -> pd.DataFrame:
-    """Étiquette les événements pluvieux forts comme proxy d'orage.
+    """Label heavy-rain events as a storm proxy.
 
-    On considère qu'un événement est actif si les précipitations horaires
-    dépassent `seuil_mm`. `storm_onset` marque le premier pas de temps de
-    l'événement, `storm_active` couvre `duration_steps` pas de temps à
-    partir de l'onset (pour représenter la durée de l'événement).
+    An event is considered active when hourly rainfall exceeds `seuil_mm`.
+    `storm_onset` marks the first time step of the event, `storm_active`
+    covers `duration_steps` time steps starting from the onset (to represent
+    the event's duration).
 
-    Cette étiquette est un proxy, on ne prétend pas identifier des orages
-    convectifs au sens strict. Les précipitations fortes horaires sont un
-    marqueur pratique et disponible partout.
+    This label is a proxy: we do not claim to identify convective storms
+    strictly speaking. Heavy hourly rainfall is a convenient marker that is
+    available everywhere.
     """
     d = df.copy()
     rr = d["rain_1h"].fillna(0.0)
     is_strong = rr > seuil_mm
-    # onset : transition non-strong -> strong
+    # onset: transition non-strong -> strong
     d["storm_active"] = is_strong.values
     onset = is_strong & ~is_strong.shift(1, fill_value=False)
     d["storm_onset"] = onset.values
 
     if duration_steps > 1:
-        # étendre le storm_active sur `duration_steps` pas après chaque onset
+        # extend storm_active over `duration_steps` steps after each onset
         active = np.zeros(len(d), dtype=bool)
         onset_idx = np.flatnonzero(onset.values)
         for i in onset_idx:
@@ -191,20 +191,20 @@ def build_storm_labels_from_ww(
     window_before: int = 1,
     window_after: int = 1,
 ) -> pd.DataFrame:
-    """Étiquette d'orage à partir du **code temps présent** WMO 4677.
+    """Storm label from the WMO 4677 **present weather code**.
 
-    Un orage est observé à un instant `t` si `weather_code` figure dans
-    `CODES_ORAGE_WMO`. C'est une observation ponctuelle, on **étend** ensuite
-    la fenêtre active de `window_before` pas avant et `window_after` pas
-    après pour représenter la durée typique de l'événement (environ 3 heures
-    au pas SYNOP de 3h).
+    A storm is observed at instant `t` when `weather_code` is in
+    `CODES_ORAGE_WMO`. This is a point observation; we then **extend** the
+    active window by `window_before` steps before and `window_after` steps
+    after to represent the typical event duration (about 3 hours at the
+    SYNOP 3h step).
 
-    L'onset est le **premier** instant d'un groupe d'observations orageuses
-    consécutives, éventuellement étendues.
+    The onset is the **first** step of a group of consecutive storm
+    observations, optionally extended.
 
-    Nettement plus honnête que le proxy pluie, mais plus rare : les observateurs
-    n'annoncent un orage à la station qu'au moment précis de l'observation, et
-    manquent les orages qui passent entre deux tops horaires.
+    Cleaner than the rain proxy but rarer: observers only report a storm at
+    the station at the exact observation moment, so short daytime storms
+    passing between two SYNOP tops can be missed.
     """
     d = df.copy()
     if "weather_code" not in d.columns:
@@ -215,14 +215,59 @@ def build_storm_labels_from_ww(
     ww = d["weather_code"]
     is_storm = ww.isin(CODES_ORAGE_WMO).fillna(False)
 
-    # extension temporelle : étendre chaque observation orageuse
+    # time extension: broaden each storm observation
     active = np.zeros(len(d), dtype=bool)
     for i in np.flatnonzero(is_storm.values):
         lo = max(0, i - window_before)
         hi = min(len(d), i + window_after + 1)
         active[lo:hi] = True
     d["storm_active"] = active
-    # onset : transition inactive -> active
+    # onset: transition inactive -> active
+    onset = np.zeros(len(d), dtype=bool)
+    onset[1:] = active[1:] & ~active[:-1]
+    onset[0] = active[0]
+    d["storm_onset"] = onset
+    return d
+
+
+def build_storm_labels_combined(
+    df: pd.DataFrame,
+    rain_seuil_mm: float = 5.0,
+    window_before: int = 1,
+    window_after: int = 1,
+) -> pd.DataFrame:
+    """Union of WMO storm code labels and heavy-rain labels.
+
+    An event is active if (a) the WMO present-weather code is in
+    `CODES_ORAGE_WMO`, OR (b) hourly rain exceeds `rain_seuil_mm`.
+
+    The union catches short daytime storms that fall between two SYNOP tops
+    (the ww code is instantaneous, and the observer is not always at the
+    station within 3 hours). The rain threshold here is **stricter** than
+    the plain rain proxy (5 mm instead of 2), to avoid polluting with plain
+    stratiform rain.
+
+    The `window_before/window_after` extension applies around each storm
+    observation.
+    """
+    d = df.copy()
+    if "weather_code" not in d.columns:
+        raise ValueError(
+            "Colonne 'weather_code' absente. "
+            "Régénérer le dataset brut en incluant la colonne 'ww' du SYNOP."
+        )
+    ww = d["weather_code"]
+    is_ww_storm = ww.isin(CODES_ORAGE_WMO).fillna(False)
+    rr = d["rain_1h"].fillna(0.0)
+    is_heavy_rain = rr > rain_seuil_mm
+    is_event = is_ww_storm | is_heavy_rain
+
+    active = np.zeros(len(d), dtype=bool)
+    for i in np.flatnonzero(is_event.values):
+        lo = max(0, i - window_before)
+        hi = min(len(d), i + window_after + 1)
+        active[lo:hi] = True
+    d["storm_active"] = active
     onset = np.zeros(len(d), dtype=bool)
     onset[1:] = active[1:] & ~active[:-1]
     onset[0] = active[0]
@@ -238,13 +283,15 @@ def prepare_station(
     ww_window_before: int = 1,
     ww_window_after: int = 1,
 ) -> pd.DataFrame:
-    """Pipeline complet pour une station : rééchantillonne + étiquette.
+    """Full per-station pipeline: resample + label.
 
-    `label_source` :
-      - `"rain"` (défaut) : proxy pluie forte, `rain_1h > rain_seuil_mm`.
-      - `"ww"`             : vrai code orage WMO 4677 (codes 17, 29, 91-99).
+    `label_source`:
+      - `"rain"` (default): heavy-rain proxy, `rain_1h > rain_seuil_mm`.
+      - `"ww"`            : true WMO 4677 storm codes (17, 29, 91-99).
+      - `"combined"`      : union of "ww" and hourly rain > 5 mm.
 
-    Retourne un DataFrame prêt à fenêtrer via `taranis.data.windows.make_windows`.
+    Returns a DataFrame ready to be windowed via
+    `taranis.data.windows.make_windows`.
     """
     d = resample_regular(raw_df, freq=freq)
     if label_source == "rain":
@@ -253,13 +300,20 @@ def prepare_station(
         d = build_storm_labels_from_ww(
             d, window_before=ww_window_before, window_after=ww_window_after
         )
+    elif label_source == "combined":
+        d = build_storm_labels_combined(
+            d,
+            rain_seuil_mm=max(rain_seuil_mm, 5.0),
+            window_before=ww_window_before,
+            window_after=ww_window_after,
+        )
     else:
         raise ValueError(f"label_source inconnu : {label_source}")
     return d
 
 
 def summarize_stations(stations: dict[str, pd.DataFrame]) -> pd.DataFrame:
-    """Un petit tableau récapitulatif : durée couverte, densité, altitude, onsets."""
+    """Small summary table: covered duration, density, altitude, onsets."""
     rows = []
     for sid, sub in stations.items():
         rows.append(

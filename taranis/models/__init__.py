@@ -1,4 +1,4 @@
-"""Modèles Taranis, baseline physique et TS-JEPA."""
+"""Taranis models: physics baseline and TS-JEPA."""
 
 from taranis.models.baseline_physics import BaselinePhysics
 from taranis.models.tsjepa import (

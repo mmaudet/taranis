@@ -1,10 +1,10 @@
-"""Figures d'entraînement pour l'étape 6.
+"""Training figures for step 6.
 
-Trois figures :
+Three figures:
 
-- step6_courbes.png    : perte train + val + LR + tau pour les 2 runs.
-- step6_collapse.png   : std_moy et rang effectif au fil du temps, pour les 2 runs.
-- step6_final.png      : résumé chiffré final synth vs réel.
+- step6_courbes.png  : train + val loss + LR + tau for the 2 runs.
+- step6_collapse.png : std_moy and effective rank over time, for the 2 runs.
+- step6_final.png    : final numerical summary synth vs real.
 """
 
 from __future__ import annotations

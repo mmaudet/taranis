@@ -1,10 +1,10 @@
-"""Schémas pédagogiques pour les étapes 3 et 4.
+"""Teaching diagrams for steps 3 and 4.
 
-Trois figures :
+Three figures:
 
-- step3_paradigmes.png : autoencodeur / contrastif / JEPA côte à côte.
-- step4_pixel_vs_latent.png : pourquoi prédire dans l'espace latent.
-- step4_jepa_arch.png : l'architecture JEPA sur une fenêtre temporelle.
+- step3_paradigmes.png     : autoencoder / contrastive / JEPA side by side.
+- step4_pixel_vs_latent.png: why predict in latent space.
+- step4_jepa_arch.png      : JEPA architecture on a time window.
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ def _clean(ax, title=""):
 def figure_paradigmes():
     fig, axes = plt.subplots(1, 3, figsize=(13, 4.2))
 
-    # ---- 1. Autoencodeur ----
+    # ---- 1. Autoencoder ----
     ax = axes[0]
     _clean(ax, "Autoencodeur")
     _box(ax, 0.05, 0.55, 0.15, 0.15, "x")
@@ -76,7 +76,7 @@ def figure_paradigmes():
     ax.text(0.5, 0.05, "perte : ||x - x̂||\n(espace d'entrée)", ha="center", fontsize=9,
             color="#B00020")
 
-    # ---- 2. Contrastif ----
+    # ---- 2. Contrastive ----
     ax = axes[1]
     _clean(ax, "Contrastif")
     _box(ax, 0.05, 0.75, 0.15, 0.12, "x, vue 1", facecolor="#E6F4EA", edgecolor="#137333")
@@ -97,7 +97,7 @@ def figure_paradigmes():
     _arrow(ax, 0.46, 0.61, 0.55, 0.61)
     _arrow(ax, 0.46, 0.26, 0.55, 0.26)
 
-    # attirance et répulsion
+    # attract and repel
     _arrow(ax, 0.61, 0.75, 0.61, 0.67, color="#137333", style="<->", lw=1.8, mutation=14)
     ax.text(0.72, 0.71, "rapprocher", fontsize=9, color="#137333")
 
@@ -142,10 +142,10 @@ def figure_paradigmes():
 
 
 def figure_pixel_vs_latent():
-    """Comparaison intuitive prédire les pixels vs prédire dans l'espace latent."""
+    """Intuitive comparison: predicting pixels vs predicting in latent space."""
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.2))
 
-    # ---- Gauche : prédire les valeurs brutes ----
+    # ---- Left: predict raw values ----
     ax = axes[0]
     _clean(ax, "Prédire les valeurs brutes (autoencodeur, MAE, MSE-pixel)")
     _box(ax, 0.05, 0.55, 0.20, 0.20, "fenêtre\nvisible")
@@ -166,7 +166,7 @@ def figure_pixel_vs_latent():
         fontsize=9,
     )
 
-    # ---- Droite : prédire dans le latent ----
+    # ---- Right: predict in latent space ----
     ax = axes[1]
     _clean(ax, "Prédire dans l'espace des représentations (JEPA)")
     _box(ax, 0.03, 0.55, 0.18, 0.20, "fenêtre\nvisible")
@@ -195,7 +195,7 @@ def figure_pixel_vs_latent():
 
 
 def figure_jepa_arch():
-    """Architecture TS-JEPA sur une fenêtre temporelle."""
+    """TS-JEPA architecture on a time window."""
     fig, ax = plt.subplots(figsize=(11, 5.2))
     _clean(ax, "")
 
@@ -206,7 +206,7 @@ def figure_jepa_arch():
     y_patches = 0.78
     x0 = 0.05
 
-    # scénario : blocs cibles = patches 2-4 et 8-10
+    # scenario: target blocks = patches 2-4 and 8-10
     target_ids = {2, 3, 4, 8, 9, 10}
     for i in range(n_patches):
         x = x0 + i * patch_w
@@ -226,13 +226,13 @@ def figure_jepa_arch():
             "C = contexte  T = cible",
             ha="left", va="center", fontsize=9)
 
-    # encodeur contexte
+    # context encoder
     _box(ax, 0.15, 0.55, 0.24, 0.10, "encodeur contexte  fθ",
          facecolor="#E8F0FE", edgecolor="#1A73E8")
     _box(ax, 0.55, 0.55, 0.24, 0.10, "encodeur cible  fθ⁻  (EMA, stop-grad)",
          facecolor="#FDE7C9", edgecolor="#E37400")
 
-    # flèches patches -> encodeurs
+    # arrows: patches -> encoders
     _arrow(ax, 0.20, 0.78, 0.22, 0.65)
     _arrow(ax, 0.62, 0.78, 0.62, 0.65)
 
@@ -248,13 +248,13 @@ def figure_jepa_arch():
     _arrow(ax, 0.27, 0.55, 0.27, 0.43)
     _arrow(ax, 0.67, 0.55, 0.67, 0.43)
 
-    # prédicteur
+    # predictor
     _box(ax, 0.18, 0.15, 0.28, 0.10, "prédicteur  gφ  (positions cibles + z_context)")
     _box(ax, 0.55, 0.15, 0.20, 0.10, "ẑ_target")
     _arrow(ax, 0.32, 0.35, 0.32, 0.25)
     _arrow(ax, 0.46, 0.20, 0.55, 0.20)
 
-    # perte
+    # loss
     _arrow(ax, 0.65, 0.35, 0.65, 0.25, color="#B00020", style="<->", lw=1.5)
     ax.text(0.75, 0.28, "perte SmoothL1", fontsize=10, color="#B00020")
 

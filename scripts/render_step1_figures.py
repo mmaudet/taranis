@@ -1,8 +1,8 @@
-"""Génère les figures de l'étape 1 du carnet.
+"""Generate figures for step 1 of the notebook.
 
-Sortie : docs/assets/step1_*.png. À exécuter avec `uv run python scripts/render_step1_figures.py`.
-Reproductible via la seed fixée. On garde volontairement matplotlib brut,
-sans style tiers, pour rester lisible.
+Output: docs/assets/step1_*.png. Run via `uv run python scripts/render_step1_figures.py`.
+Reproducible via the fixed seed. We intentionally keep raw matplotlib,
+without third-party styling, to stay readable.
 """
 
 from __future__ import annotations
@@ -75,7 +75,7 @@ def main():
     df = generate(days=10.0, step_minutes=10, storms_per_day=0.5, seed=42)
     _plot_vue_ensemble(df, "step1_vue_ensemble.png")
 
-    # premier onset avec assez de contexte autour
+    # first onset with enough surrounding context
     onsets = np.flatnonzero(df["storm_onset"].values)
     print(f"{len(onsets)} orages simulés sur 10 jours")
     for idx in onsets:

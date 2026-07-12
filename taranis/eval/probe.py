@@ -1,17 +1,22 @@
-"""Sonde linéaire aval sur un encodeur TS-JEPA gelé.
+"""Downstream linear probe on a frozen TS-JEPA encoder.
 
-L'idée est simple. Une fois que TS-JEPA a été pré-entraîné en auto-supervisé,
-on gèle son encodeur et on entraîne un tout petit classifieur linéaire sur
-les embeddings pour la tâche aval (« un orage arrive-t-il dans l'horizon »).
+Simple idea. Once TS-JEPA has been pre-trained in a self-supervised way,
+we freeze its encoder and train a tiny linear classifier on the
+embeddings for the downstream task ("is a storm about to happen in the
+horizon?").
 
-Trois choses seulement se passent dans la sonde :
+Only three things happen in the probe:
 
-1. Chaque fenêtre `(Tw, V)` passe dans l'encodeur online gelé → `(N, D)` tokens.
-2. On agrège par **mean pooling** sur les patches → un unique vecteur `(D,)`.
-3. Une **régression logistique** apprend à séparer les classes sur ces vecteurs.
+1. Each `(Tw, V)` window passes through the frozen online encoder,
+   yielding `(N, D)` tokens.
+2. We aggregate with **mean pooling** over patches, yielding a single
+   `(D,)` vector.
+3. A **logistic regression** learns to separate the classes on those
+   vectors.
 
-C'est le protocole classique d'évaluation d'une représentation apprise. Si
-l'encodeur a capté quelque chose d'utile, la régression linéaire suffit.
+This is the standard protocol for evaluating a learned representation.
+If the encoder has captured something useful, linear regression is
+enough.
 """
 
 from __future__ import annotations
@@ -28,13 +33,13 @@ from taranis.models import TSJEPA, TSJEPAConfig
 
 
 def load_encoder_from_checkpoint(path: str | Path) -> TSJEPA:
-    """Recharge un modèle TSJEPA à partir de son checkpoint `model.pt`."""
+    """Reload a TSJEPA model from its `model.pt` checkpoint."""
     path = Path(path)
     if path.is_dir():
         path = path / "model.pt"
     payload = torch.load(path, map_location="cpu", weights_only=False)
     cfg_dict = payload["model_config"]
-    # `n_patches` est une propriété calculée, on ne la passe pas au constructeur
+    # `n_patches` is a computed property, so do not pass it to the constructor
     cfg_dict = {k: v for k, v in cfg_dict.items() if k != "n_patches"}
     cfg = TSJEPAConfig(**cfg_dict)
     model = TSJEPA(cfg)
@@ -48,9 +53,9 @@ def _mean_pooled_embeddings(
     X: np.ndarray,
     batch_size: int = 256,
 ) -> np.ndarray:
-    """Passe les fenêtres dans l'encodeur online, moyenne sur les patches.
+    """Push windows through the online encoder, average over patches.
 
-    Retour : `(N, D)`.
+    Returns: `(N, D)`.
     """
     model.eval()
     device = next(model.parameters()).device
@@ -69,7 +74,7 @@ def _mean_pooled_embeddings(
 
 @dataclass
 class LinearProbe:
-    """Sonde linéaire aval sur un encodeur TS-JEPA gelé."""
+    """Downstream linear probe on a frozen TS-JEPA encoder."""
 
     encoder: TSJEPA
     C: float = 1.0
@@ -78,7 +83,7 @@ class LinearProbe:
     clf: LogisticRegression = field(init=False)
 
     def __post_init__(self):
-        # gel des paramètres et mode eval
+        # freeze parameters and switch to eval mode
         for p in self.encoder.parameters():
             p.requires_grad_(False)
         self.encoder.eval()

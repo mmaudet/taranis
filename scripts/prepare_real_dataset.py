@@ -1,24 +1,24 @@
-"""Prépare le dataset d'entraînement à partir des données Météo-France.
+"""Prepare the training dataset from the Meteo-France data.
 
-Entrée : `data/mf/synop_2020_2024_4stations.csv`, téléchargé depuis Opendatasoft.
+Input: `data/mf/synop_2020_2024_4stations.csv`, downloaded from Opendatasoft.
 
-Sortie :
-- `data/real_windows.npz` : fenêtres X et labels y pour chaque split.
+Output:
+- `data/real_windows.npz`: windows X and labels y for each split.
 
-Choix pédagogiques :
+Design choices:
 
-- Pas de temps : 3 heures (natif SYNOP), pas de sous-échantillonnage artificiel.
-- Fenêtre `Tw = 32` pas, soit 96 heures ou 4 jours de contexte, à comparer aux
-  16 heures du synthétique. On voit une saison quotidienne plus large.
-- Horizon `H = 8` pas, soit 24 heures d'anticipation, à comparer aux 8 h du
-  synthétique.
-- Label : « pluie forte » définie par `rr1 > 2 mm/h` dans l'horizon.
-  C'est un proxy pratique, pas un vrai orage convectif.
-- Split chronologique : train = 2020-2022, val = 2023, test = 2024. Un
-  découpage par années entières est plus lisible que 70/15/15.
-- Une **station** = train/val/test conjoint pour cette station. On concatène
-  ensuite les 4 stations pour former le dataset final. Le split reste
-  chronologique dans chaque station.
+- Time step: 3 hours (native SYNOP), no artificial subsampling.
+- Window `Tw = 32` steps, i.e. 96 hours or 4 days of context, versus 16
+  hours in the synthetic case. We see a wider daily seasonality.
+- Horizon `H = 8` steps, i.e. 24 hours of anticipation, versus 8 h in the
+  synthetic case.
+- Label: "heavy rain" defined as `rr1 > 2 mm/h` in the horizon. A
+  convenient proxy, not a real convective storm.
+- Chronological split: train = 2020-2022, val = 2023, test = 2024. Whole
+  years are easier to read than 70/15/15.
+- One **station** = joint train/val/test for that station. We then
+  concatenate the 4 stations to form the final dataset. The split remains
+  chronological within each station.
 """
 
 from __future__ import annotations
@@ -41,8 +41,8 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA = ROOT / "data"
 MF_CSV = DATA / "mf" / "synop_2020_2024_4stations.csv"
 
-Tw = 32   # 4 jours à pas 3h
-H = 8     # 24 heures d'horizon
+Tw = 32   # 4 days at 3h step
+H = 8     # 24 hour horizon
 STRIDE = 1
 STEP_MIN = 180
 RAIN_SEUIL_MM = 2.0
@@ -68,7 +68,7 @@ def main():
     station_stats = []
 
     for sid, raw in stations.items():
-        # rééchantillonnage + labels
+        # resampling + labels
         d = prepare_station(raw, freq="3h", rain_seuil_mm=RAIN_SEUIL_MM)
         n_on = int(d["storm_onset"].sum())
         pct_act = 100 * d["storm_active"].mean()
@@ -85,7 +85,7 @@ def main():
 
         for split, (t_start, t_end) in SPLITS.items():
             sub = split_by_date(d, t_start, t_end)
-            # supprimer les lignes contenant encore un NaN sur les canaux
+            # drop rows that still have a NaN on any input channel
             sub = sub.dropna(subset=list(CANAUX)).reset_index(drop=True)
             if len(sub) < Tw + H:
                 continue
@@ -95,7 +95,7 @@ def main():
     print("\nStations préparées :")
     print(pd.DataFrame(station_stats).to_string(index=False))
 
-    # concaténation par split
+    # per-split concatenation
     def _concat(datasets):
         if not datasets:
             raise RuntimeError("aucun exemple, dataset vide")

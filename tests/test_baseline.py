@@ -1,4 +1,4 @@
-"""Tests de la baseline physique M0."""
+"""Tests for the M0 physics baseline."""
 
 from __future__ import annotations
 
@@ -32,25 +32,25 @@ def test_baseline_entrainable_sur_synthetique():
     thr = tune_threshold_on_val(val.y, proba_val, criterion="f1")
     report = classification_report(test.y, proba_test, threshold=thr)
 
-    # attendus modestes mais très nettement supérieurs au hasard
+    # expectations are modest but clearly above chance
     assert report.auc > 0.85, f"AUC trop basse : {report.auc:.3f}"
     assert report.recall > 0.3, f"rappel trop bas : {report.recall:.3f}"
 
 
 def test_signal_physique_correct():
-    """Les tendances de pression doivent être des indicateurs de risque robustes.
+    """Pressure trends should be robust risk indicators.
 
-    On ne teste pas chaque coefficient individuellement, la multicolinéarité
-    entre features humidité peut faire flipper des signes. On vérifie la
-    cohérence directionnelle sur les tendances de pression, plus stables.
+    We do not test each coefficient individually because multicollinearity
+    between humidity features can flip signs. We check the directional
+    consistency of pressure trends, which are more stable.
     """
     df = generate(days=40.0, storms_per_day=0.6, seed=3)
     ds = make_windows(df, Tw=48, H=24, stride=1)
     train, _, _ = chronological_split(ds)
     model = BaselinePhysics().fit(train.X, train.y)
     coefs = model.coefficients()
-    # une chute de pression signale un orage à venir, donc coef négatif.
-    # On ne teste qu'un seul indicateur : les tendances courte et longue sont
-    # colinéaires, ce qui autorise le modèle à en flipper une pour compenser
-    # l'autre. La tendance courte reste dominante.
+    # a pressure drop signals a storm ahead, so the coefficient is negative.
+    # We test only one indicator: the short and long trends are collinear,
+    # so the model can flip one to compensate the other. The short trend
+    # remains dominant.
     assert coefs["pressure_trend_short"] < 0, coefs

@@ -1,14 +1,14 @@
-"""Fenêtrage et découpage chronologique.
+"""Windowing and chronological splitting.
 
-Deux idées à retenir :
+Two ideas to remember:
 
-1. Chaque exemple d'entraînement est une **fenêtre** de longueur `Tw`, une
-   photo des dernières mesures. À partir de cette fenêtre, on veut prédire si
-   un orage arrive dans les `H` pas suivants (l'horizon).
+1. Each training example is a **window** of length `Tw`, a snapshot of the
+   most recent measurements. From this window, we want to predict whether
+   a storm occurs in the next `H` steps (the horizon).
 
-2. Sur une série temporelle, on **ne mélange jamais** les indices au hasard.
-   Un split chronologique protège contre la fuite d'information et reflète la
-   contrainte réelle : au moment de la prédiction, on n'a accès qu'au passé.
+2. On a time series, we **never** shuffle indices randomly. A chronological
+   split protects against information leakage and reflects the real-world
+   constraint: at prediction time, only past data is available.
 """
 
 from __future__ import annotations
@@ -23,21 +23,22 @@ CANAUX = ("pressure", "temp", "humidity", "wind")
 
 @dataclass(frozen=True)
 class WindowedDataset:
-    """Dataset fenêtré, prêt à alimenter un modèle.
+    """Windowed dataset, ready to feed a model.
 
-    Attributs
-    ---------
-    X : np.ndarray, forme (N, Tw, V)
-        Les fenêtres. V = 4 canaux physiques dans l'ordre `CANAUX`.
-    y : np.ndarray, forme (N,)
-        Étiquettes binaires, 1 si au moins un onset d'orage tombe dans les
-        `H` pas suivant la fenêtre.
-    timestamps : np.ndarray, forme (N,)
-        Horodatage de la **fin** de chaque fenêtre. Sert au split et au débogage.
+    Attributes
+    ----------
+    X : np.ndarray, shape (N, Tw, V)
+        The windows. V = 4 physical channels in the order given by `CANAUX`.
+    y : np.ndarray, shape (N,)
+        Binary labels, 1 if at least one storm onset falls within the `H`
+        steps following the window.
+    timestamps : np.ndarray, shape (N,)
+        Timestamp of the **end** of each window. Used for the split and for
+        debugging.
     Tw : int
-        Longueur de fenêtre (nombre de pas de temps).
+        Window length (number of time steps).
     H : int
-        Horizon de prédiction (nombre de pas de temps).
+        Prediction horizon (number of time steps).
     """
 
     X: np.ndarray
@@ -58,32 +59,32 @@ def make_windows(
     label_col: str = "storm_onset",
     canaux: tuple[str, ...] = CANAUX,
 ) -> WindowedDataset:
-    """Découpe une série temporelle en fenêtres, avec étiquette d'horizon.
+    """Slice a time series into windows, with a horizon label.
 
-    Pour chaque fin de fenêtre à l'indice `t`, la fenêtre couvre `[t-Tw+1, t]`
-    et l'horizon couvre `[t+1, t+H]`. On étiquette `y=1` si `label_col` vaut
-    True au moins une fois dans cet horizon, `y=0` sinon.
+    For each window end at index `t`, the window covers `[t-Tw+1, t]` and
+    the horizon covers `[t+1, t+H]`. We assign `y=1` if `label_col` is True
+    at least once in that horizon, else `y=0`.
 
-    Paramètres
+    Parameters
     ----------
     df : pd.DataFrame
-        Doit contenir les colonnes de `canaux` et `label_col`. Pas de temps
-        régulier supposé.
+        Must contain the columns listed in `canaux` and `label_col`. Assumes
+        a regular time step.
     Tw : int
-        Longueur de la fenêtre d'entrée.
+        Input window length.
     H : int
-        Horizon de prédiction, en pas de temps.
+        Prediction horizon, in time steps.
     stride : int
-        Décalage entre deux fenêtres successives. `1` maximise le nombre
-        d'exemples, `Tw` supprime tout chevauchement.
+        Offset between two successive windows. `1` maximises the number of
+        examples; `Tw` removes any overlap.
     label_col : str
-        Colonne booléenne utilisée pour construire `y`. Par défaut on prédit
-        l'apparition d'un nouvel orage (`storm_onset`).
+        Boolean column used to build `y`. Defaults to predicting the onset
+        of a new storm (`storm_onset`).
     canaux : tuple[str, ...]
-        Colonnes d'entrée dans l'ordre voulu pour le tenseur X.
+        Input columns in the desired order for tensor X.
 
-    Retour
-    ------
+    Returns
+    -------
     WindowedDataset
     """
     if Tw < 1 or H < 1:
@@ -100,7 +101,7 @@ def make_windows(
     label = df[label_col].to_numpy(dtype=bool)
     ts = df["timestamp"].to_numpy()
 
-    # positions des fins de fenêtre valides, telles que l'horizon rentre encore
+    # valid window-end positions such that the horizon still fits
     ends = np.arange(Tw - 1, n - H, stride)
     N = len(ends)
 
@@ -120,13 +121,13 @@ def chronological_split(
     ds: WindowedDataset,
     ratios: tuple[float, float, float] = (0.7, 0.15, 0.15),
 ) -> tuple[WindowedDataset, WindowedDataset, WindowedDataset]:
-    """Découpe un `WindowedDataset` en train, val, test dans l'ordre du temps.
+    """Split a `WindowedDataset` into train, val, test in chronological order.
 
-    Les ratios sont normalisés à 1. Le split se fait sur l'axe des fenêtres,
-    dans l'ordre où elles ont été produites (chronologique). Aucun mélange.
+    Ratios are normalised to 1. The split occurs along the window axis in
+    the order they were produced (chronological). No shuffling.
 
-    Retour
-    ------
+    Returns
+    -------
     (train, val, test)
     """
     if len(ds) == 0:
@@ -136,7 +137,7 @@ def chronological_split(
     n = len(ds)
     n_train = int(n * r_train)
     n_val = int(n * r_val)
-    # tout ce qui reste va dans test, pour ne perdre aucune fenêtre
+    # everything left goes to test, to keep every window
     idx_train = slice(0, n_train)
     idx_val = slice(n_train, n_train + n_val)
     idx_test = slice(n_train + n_val, n)
@@ -158,14 +159,14 @@ def _slice(ds: WindowedDataset, s: slice) -> WindowedDataset:
 
 
 def channel_stats(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """Moyenne et écart-type par canal, calculés sur l'ensemble des fenêtres.
+    """Per-channel mean and standard deviation over all windows.
 
-    Utile pour normaliser train, val et test avec les stats du train seulement,
-    ce qui évite toute fuite d'information.
+    Useful to normalise train, val and test with train-only statistics,
+    which prevents any information leakage.
 
-    Note : sur de très grands datasets (millions d'échantillons), on force
-    l'accumulation en float64 pour éviter la perte de précision d'un sum
-    float32 (qui peut donner des résultats absurdes sur ~10^8 valeurs).
+    Note: on very large datasets (millions of samples), we force accumulation
+    in float64 to avoid the precision loss of a float32 sum (which can yield
+    absurd results on ~10^8 values).
     """
     flat = X.reshape(-1, X.shape[-1]).astype(np.float64)
     mean = flat.mean(axis=0)
@@ -175,5 +176,5 @@ def channel_stats(X: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
 
 
 def normalize(X: np.ndarray, mean: np.ndarray, std: np.ndarray) -> np.ndarray:
-    """Normalisation canal par canal, en float32."""
+    """Per-channel normalisation, in float32."""
     return ((X - mean) / std).astype(np.float32)

@@ -1,10 +1,10 @@
-"""Entraîne la baseline physique M0 sur les fenêtres synthétiques.
+"""Train the M0 physics baseline on the synthetic windows.
 
-Sauvegarde :
-- `runs/baseline/report.json` : métriques test + coefficients + seuil,
-- `docs/assets/step2_curves.png` : ROC et courbe précision-rappel test.
+Saves:
+- `runs/baseline/report.json`   : test metrics + coefficients + threshold,
+- `docs/assets/step2_curves.png`: test ROC and precision-recall curves.
 
-Ce script sert de référence permanente. Il est appelé par la doc de l'étape 2.
+Serves as a permanent reference, called by the step 2 documentation.
 """
 
 from __future__ import annotations
@@ -34,8 +34,8 @@ def load_windows():
 
 
 def dénormalise(X_norm: np.ndarray, mean: np.ndarray, std: np.ndarray) -> np.ndarray:
-    """La baseline construit ses features à partir de trends physiques.
-    Elle est plus interprétable si on lui donne des unités physiques.
+    """The baseline builds its features from physical trends.
+    It is more interpretable when fed with physical units.
     """
     return (X_norm * std + mean).astype(np.float32)
 
@@ -65,8 +65,8 @@ def plot_curves(y_test, score_test, filename):
 def main():
     data = load_windows()
     mean, std = data["mean"], data["std"]
-    step_min = int(1440 // (data["Tw"].item() * 24 / 16))  # heuristique, ici 10
-    # On récupère depuis le npz les canaux normalisés puis on dé-normalise
+    step_min = int(1440 // (data["Tw"].item() * 24 / 16))  # heuristic, here 10
+    # Pull normalised channels from the npz and denormalise them
     X_train = dénormalise(data["X_train"], mean, std)
     X_val = dénormalise(data["X_val"], mean, std)
     X_test = dénormalise(data["X_test"], mean, std)

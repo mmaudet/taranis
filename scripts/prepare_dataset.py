@@ -1,14 +1,14 @@
-"""Prépare le dataset synthétique d'entraînement.
+"""Prepare the synthetic training dataset.
 
-Un an de mesures simulées à 10 minutes, découpé chronologiquement en
-train / val / test 70 / 15 / 15. On sauvegarde :
+One year of simulated measurements at 10 minutes, chronologically split
+into train / val / test 70 / 15 / 15. We save:
 
-- `data/synthetic_raw.csv` : la série brute (7 colonnes),
-- `data/synthetic_windows.npz` : les fenêtres X et labels y, avec l'index de
-  split et les stats de normalisation calculées sur le train.
+- `data/synthetic_raw.csv`     : the raw series (7 columns),
+- `data/synthetic_windows.npz` : windows X and labels y, with the split
+  indices and the normalisation stats computed on train.
 
-Fenêtrage par défaut : Tw = 96 pas (16 h), H = 48 pas (8 h). Reproductible via
-la seed fixée.
+Default windowing: Tw = 96 steps (16 h), H = 48 steps (8 h). Reproducible
+via the fixed seed.
 """
 
 from __future__ import annotations

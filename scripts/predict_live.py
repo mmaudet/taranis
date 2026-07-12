@@ -1,10 +1,10 @@
-"""Prédit sur du **vrai** SYNOP live pour quelques stations.
+"""Predict on **real** live SYNOP data for a few stations.
 
-Récupère les 5 derniers jours pour la station demandée, met à jour la
-fenêtre glissante à Tw pas, appelle l'inférence, affiche le résultat en
-ligne de commande + génère un graphique.
+Fetches the last 5 days for the requested station, updates the sliding
+window to Tw steps, calls inference, prints the result on the command
+line and produces a plot.
 
-Usage :
+Usage:
 
     uv run python scripts/predict_live.py --station 07591 --output docs/assets/step12_live_embrun.png
 """
@@ -32,7 +32,7 @@ _OPENDS = (
 
 
 def _fetch_max_date(station_id: str) -> datetime:
-    """Retourne la date la plus récente disponible sur la station."""
+    """Return the most recent date available for the station."""
     api = (
         "https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/"
         "donnees-synop-essentielles-omm/records"
@@ -53,10 +53,10 @@ def _fetch_max_date(station_id: str) -> datetime:
 
 
 def fetch_synop(station_id: str, days: int = 6, end: datetime | None = None) -> str:
-    """Télécharge les `days` derniers jours SYNOP jusqu'à `end` pour la station.
+    """Download the last `days` SYNOP days up to `end` for the station.
 
-    Si `end` est None, on prend `max(date)` disponible (les données Opendatasoft
-    sont rafraîchies mensuellement, l'instant courant peut être en avance).
+    If `end` is None, use the available `max(date)`. Opendatasoft data is
+    refreshed monthly, so the current moment may be ahead of the feed.
     """
     if end is None:
         end = _fetch_max_date(station_id)
@@ -98,7 +98,7 @@ def _plot_live(d, prediction, station_name, altitude, out_path):
     axes[-1].set_xlabel("Temps")
     fig.autofmt_xdate()
 
-    # bandeau d'alerte visible
+    # visible alert banner
     fig.subplots_adjust(top=0.90)
     band_color = prediction.alert.color
     fig.text(

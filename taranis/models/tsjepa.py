@@ -1,25 +1,25 @@
-"""TS-JEPA, adaptation de JEPA aux séries temporelles.
+"""TS-JEPA: JEPA adapted to time series.
 
-Ce fichier contient toutes les briques de TS-JEPA, dans l'ordre de la doc :
+This file contains all the TS-JEPA building blocks, in doc order:
 
-1. PatchEmbed              : découpe une fenêtre en patches et projette en D.
-2. TransformerBlock        : bloc attention + MLP, réutilisable.
-3. TransformerEncoder      : empilement de blocs, avec LayerNorm finale.
-4. sample_block_mask       : masquage par blocs non chevauchants.
-5. EMAWrapper              : encodeur cible, moyenne mobile exponentielle
-                              des paramètres de l'encodeur online.
-6. TSJEPA                  : assemblage complet, prête à entraîner.
+1. PatchEmbed          : split a window into patches, project to D.
+2. TransformerBlock    : reusable attention + MLP block.
+3. TransformerEncoder  : stack of blocks with a final LayerNorm.
+4. sample_block_mask   : non-overlapping block masking.
+5. EMAWrapper          : target encoder, exponential moving average of the
+                         online encoder parameters.
+6. TSJEPA              : full assembly, ready to train.
 
-Repères pédagogiques :
+Teaching notes:
 
-- L'encodeur online (`fθ`) reçoit les gradients. C'est celui qu'on garde
-  pour la sonde aval de l'étape 7.
-- L'encodeur cible (`fθ⁻`) est une copie EMA de `fθ`, sans gradient. Il fournit
-  la « vérité » vers laquelle le prédicteur doit tendre.
-- La perte se calcule dans l'espace latent, sur les patches cibles uniquement.
+- The online encoder (`fθ`) receives gradients. It is the one we keep for
+  the downstream probe of step 7.
+- The target encoder (`fθ-`) is an EMA copy of `fθ`, without gradient. It
+  provides the "ground truth" the predictor tries to match.
+- The loss is computed in latent space, on the target patches only.
 
-Voir `docs/04-jepa-idee.md` pour l'intuition et `docs/05-tsjepa-briques.md`
-pour le fil de code brique par brique.
+See `docs/04-jepa-idee.md` for intuition and `docs/05-tsjepa-briques.md`
+for the block-by-block code walkthrough.
 """
 
 from __future__ import annotations
@@ -37,13 +37,13 @@ from torch.nn import functional as F
 
 
 class PatchEmbed(nn.Module):
-    """Découpe une fenêtre `(B, T, V)` en patches et projette en D.
+    """Split a `(B, T, V)` window into patches and project to D.
 
-    - `T` doit être un multiple de `patch_len`.
-    - Un patch contient `patch_len` pas de temps de `V` canaux, soit
-      `patch_len * V` valeurs, projetées linéairement en D.
+    - `T` must be a multiple of `patch_len`.
+    - Each patch holds `patch_len` time steps of `V` channels, i.e.
+      `patch_len * V` values, linearly projected to D.
 
-    Sortie : `(B, n_patches, D)` avec `n_patches = T / patch_len`.
+    Output: `(B, n_patches, D)` with `n_patches = T / patch_len`.
     """
 
     def __init__(self, patch_len: int, n_canaux: int, d_model: int):
@@ -71,11 +71,11 @@ class PatchEmbed(nn.Module):
 
 
 class TransformerBlock(nn.Module):
-    """Bloc transformer standard : pre-norm attention + pre-norm MLP.
+    """Standard transformer block: pre-norm attention + pre-norm MLP.
 
-    Deux résidus, une seule attention self, un MLP à ratio 2 par défaut. Rien
-    d'original, c'est délibéré : la structure JEPA porte l'apprentissage, pas
-    l'architecture du bloc.
+    Two residuals, a single self-attention, an MLP at ratio 2 by default.
+    Nothing original, on purpose: the JEPA structure carries the learning,
+    not the block architecture.
     """
 
     def __init__(self, d_model: int, n_heads: int, mlp_ratio: float = 2.0):
@@ -99,7 +99,7 @@ class TransformerBlock(nn.Module):
 
 
 class TransformerEncoder(nn.Module):
-    """Empilement de `n_layers` blocs, suivi d'une LayerNorm finale."""
+    """Stack of `n_layers` blocks followed by a final LayerNorm."""
 
     def __init__(
         self,
@@ -121,7 +121,7 @@ class TransformerEncoder(nn.Module):
 
 
 # --------------------------------------------------------------------------- #
-# 4. Masquage par blocs
+# 4. Block masking
 # --------------------------------------------------------------------------- #
 
 
@@ -132,17 +132,17 @@ def sample_block_mask(
     generator: torch.Generator | None = None,
     max_tries: int = 100,
 ) -> tuple[torch.Tensor, torch.Tensor]:
-    """Tire un masque par blocs non chevauchants, partagé sur le batch.
+    """Sample a non-overlapping block mask, shared across the batch.
 
-    On tire `n_blocks` positions de départ dans `[0, n_patches - block_size]`,
-    en rejetant les configurations où deux blocs se chevauchent. Les patches
-    couverts par les blocs forment la **cible** (masquée), les autres forment
-    le **contexte**.
+    Draw `n_blocks` start positions in `[0, n_patches - block_size]`,
+    rejecting any configuration where two blocks overlap. Patches covered
+    by the blocks form the **target** (masked), the rest form the
+    **context**.
 
-    Retour
-    ------
-    (context_idx, target_idx) : deux tenseurs `LongTensor` de tailles complémentaires,
-    tels que `sorted(cat) == arange(n_patches)`.
+    Returns
+    -------
+    (context_idx, target_idx): two `LongTensor` of complementary sizes such
+    that `sorted(cat) == arange(n_patches)`.
     """
     if n_blocks * block_size > n_patches:
         raise ValueError(
@@ -179,14 +179,14 @@ def sample_block_mask(
 
 
 class EMAWrapper(nn.Module):
-    """Copie EMA d'un module, sans gradient.
+    """EMA copy of a module, without gradient.
 
-    - Au constructeur : deep copy de la source, gel de tous les paramètres.
-    - À chaque `update(source, tau)` : chaque paramètre est mis à jour
-      `p ← tau * p + (1 - tau) * p_source`.
-    - `forward` : appelle la copie interne sous `torch.no_grad`.
+    - In the constructor: deep copy the source, freeze all parameters.
+    - At each `update(source, tau)`: each parameter is updated as
+      `p = tau * p + (1 - tau) * p_source`.
+    - `forward`: run the internal copy under `torch.no_grad`.
 
-    On ne veut jamais que du gradient traverse cet objet.
+    No gradient should ever flow through this object.
     """
 
     def __init__(self, source: nn.Module):
@@ -230,21 +230,21 @@ class TSJEPAConfig:
 
 
 class TSJEPA(nn.Module):
-    """Modèle TS-JEPA complet.
+    """Full TS-JEPA model.
 
-    Interface d'usage :
+    Usage:
 
         model = TSJEPA(config)
-        # à chaque batch :
+        # each batch:
         ctx_idx, tgt_idx = sample_block_mask(config.n_patches, ...)
         pred_tgt, z_tgt = model(x, ctx_idx, tgt_idx)
         loss = F.smooth_l1_loss(pred_tgt, z_tgt)
         loss.backward()
         optimizer.step()
-        model.update_target()   # mise à jour EMA après l'étape
+        model.update_target()   # EMA update after the step
 
-    Après entraînement, l'encodeur `encoder` est le seul objet nécessaire à
-    la sonde aval de l'étape 7. On le récupère via `model.freeze_encoder()`.
+    After training, the `encoder` is the only object needed for the
+    downstream probe (step 7). Retrieve it via `model.freeze_encoder()`.
     """
 
     def __init__(self, config: TSJEPAConfig):
@@ -257,7 +257,7 @@ class TSJEPA(nn.Module):
             d_model=config.d_model,
         )
         self.pos_embed = nn.Embedding(config.n_patches, config.d_model)
-        # jeton appris qu'on met sur les positions cibles en entrée du prédicteur
+        # learned token placed at target positions on predictor input
         self.mask_token = nn.Parameter(torch.zeros(1, 1, config.d_model))
         nn.init.trunc_normal_(self.mask_token, std=0.02)
 
@@ -274,19 +274,19 @@ class TSJEPA(nn.Module):
             n_heads=config.n_heads,
             mlp_ratio=config.mlp_ratio,
         )
-        # LayerNorm sur la cible : verrouille l'échelle, contre-mesure au collapse
+        # LayerNorm on target: locks the scale, counter-measure against collapse
         self.target_norm = nn.LayerNorm(config.d_model)
 
     def _add_position(self, patches: torch.Tensor) -> torch.Tensor:
-        """Ajoute les embeddings de position aux patches."""
+        """Add position embeddings to the patches."""
         B, N, _ = patches.shape
         positions = torch.arange(N, device=patches.device)
         return patches + self.pos_embed(positions).unsqueeze(0)
 
     def encode_context(self, x: torch.Tensor, context_idx: torch.Tensor) -> torch.Tensor:
-        """Encodage online sur les patches de contexte uniquement.
+        """Online encoding on the context patches only.
 
-        Retour : `(B, n_ctx, D)`.
+        Returns: `(B, n_ctx, D)`.
         """
         p = self._add_position(self.patch_embed(x))
         return self.encoder(p[:, context_idx, :])
@@ -295,10 +295,10 @@ class TSJEPA(nn.Module):
     def encode_target(
         self, x: torch.Tensor, target_idx: torch.Tensor
     ) -> torch.Tensor:
-        """Embeddings cibles via l'encodeur EMA sur la séquence complète,
-        puis LayerNorm et sélection des patches cibles.
+        """Target embeddings via the EMA encoder on the full sequence,
+        then LayerNorm and selection of the target patches.
 
-        Retour : `(B, n_tgt, D)`.
+        Returns: `(B, n_tgt, D)`.
         """
         p = self._add_position(self.patch_embed(x))
         z_full = self.target_encoder(p)
@@ -310,10 +310,10 @@ class TSJEPA(nn.Module):
         context_idx: torch.Tensor,
         target_idx: torch.Tensor,
     ) -> torch.Tensor:
-        """Prédit les embeddings des patches cibles à partir du contexte.
+        """Predict the target patch embeddings from the context.
 
-        On concatène `[z_context, mask_tokens + pos_target]` et on passe le
-        tout dans le prédicteur. On extrait la portion cible en sortie.
+        Concatenate `[z_context, mask_tokens + pos_target]` and feed it to
+        the predictor. Return only the target-side output.
         """
         B = z_context.size(0)
         n_ctx = context_idx.shape[0]
@@ -332,23 +332,23 @@ class TSJEPA(nn.Module):
         context_idx: torch.Tensor,
         target_idx: torch.Tensor,
     ) -> tuple[torch.Tensor, torch.Tensor]:
-        """Un pas complet.
+        """One full step.
 
-        Retour : `(pred_target, z_target)`, tous deux `(B, n_tgt, D)`.
-        La perte typique est `F.smooth_l1_loss(pred_target, z_target)`.
+        Returns: `(pred_target, z_target)`, both shaped `(B, n_tgt, D)`.
+        Typical loss: `F.smooth_l1_loss(pred_target, z_target)`.
         """
-        z_target = self.encode_target(x, target_idx)  # stop-gradient dedans
+        z_target = self.encode_target(x, target_idx)  # stop-gradient inside
         z_context = self.encode_context(x, context_idx)
         pred_target = self.predict(z_context, context_idx, target_idx)
         return pred_target, z_target
 
     @torch.no_grad()
     def update_target(self, tau: float | None = None) -> None:
-        """Mise à jour EMA de l'encodeur cible depuis l'encodeur online."""
+        """EMA update of the target encoder from the online encoder."""
         self.target_encoder.update(self.encoder, tau or self.config.tau_ema)
 
     def freeze_encoder(self) -> nn.Module:
-        """Renvoie l'encodeur online gelé, prêt pour la sonde aval."""
+        """Return the frozen online encoder, ready for the downstream probe."""
         for p in self.encoder.parameters():
             p.requires_grad_(False)
         self.encoder.eval()
@@ -356,19 +356,19 @@ class TSJEPA(nn.Module):
 
 
 # --------------------------------------------------------------------------- #
-# Utilitaires de surveillance du collapse (utilisés à l'étape 6)
+# Collapse-monitoring utilities (used at step 6)
 # --------------------------------------------------------------------------- #
 
 
 def embedding_stats(z: torch.Tensor) -> dict[str, float]:
-    """Statistiques d'un batch d'embeddings, pour détecter le collapse.
+    """Batch-level embedding statistics used to detect collapse.
 
-    - `std_moy`   : écart-type moyen par dimension, sur tous les tokens.
-    - `eff_rank`  : rang effectif de la covariance, `exp(H(spectrum))`.
-                     Une valeur proche de `D` indique une bonne dispersion,
-                     une valeur proche de 1 indique un collapse.
+    - `std_moy`  : mean per-dimension standard deviation across all tokens.
+    - `eff_rank` : effective rank of the covariance, `exp(H(spectrum))`.
+                   A value close to `D` indicates good dispersion; a value
+                   close to 1 signals collapse.
 
-    À utiliser en cours d'entraînement, sur `z_context` ou `z_target`.
+    Use during training on `z_context` or `z_target`.
     """
     z_flat = z.reshape(-1, z.size(-1)).detach().float()
     std_moy = z_flat.std(dim=0).mean().item()
@@ -379,7 +379,7 @@ def embedding_stats(z: torch.Tensor) -> dict[str, float]:
     eig = torch.linalg.eigvalsh(cov).clamp(min=0.0)
     total = eig.sum()
     if total < 1e-10:
-        # variance totalement effondrée, rang effectif ≈ 1
+        # variance fully collapsed, effective rank ~ 1
         return {"std_moy": std_moy, "eff_rank": 1.0}
     p = (eig / total).clamp(min=1e-12)
     eff_rank = torch.exp(-(p * p.log()).sum()).item()
@@ -387,5 +387,5 @@ def embedding_stats(z: torch.Tensor) -> dict[str, float]:
 
 
 def jepa_loss(pred_target: torch.Tensor, z_target: torch.Tensor) -> torch.Tensor:
-    """Perte SmoothL1 en espace latent, sur les tokens cibles."""
+    """SmoothL1 loss in latent space, on the target tokens."""
     return F.smooth_l1_loss(pred_target, z_target)

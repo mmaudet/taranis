@@ -1,25 +1,23 @@
-"""Cœur d'inférence Taranis.
+"""Taranis inference core.
 
-Charge un encodeur TS-JEPA gelé, sa sonde linéaire aval, et expose une
-fonction `predict(window)` qui renvoie :
+Loads a frozen TS-JEPA encoder and its downstream linear probe, then
+exposes a `predict(window)` function that returns:
 
-- la probabilité brute d'orage,
-- un niveau d'alerte discret (`AlertLevel.VERT`, `ORANGE`, `ROUGE`),
-- un disclaimer de sécurité,
-- des métadonnées utiles au front (canaux, période, timestamps).
+- the raw storm probability,
+- a discrete alert level (`AlertLevel.VERT`, `ORANGE`, `ROUGE`),
+- a safety disclaimer,
+- metadata useful for the front-end (channels, period, timestamps).
 
-Les seuils d'alerte s'appuient sur le **seuil de val** de la sonde
-(`threshold` sauvegardé par `scripts/save_probe.py`), noté `T`. On
-construit trois zones :
+Alert thresholds are built from the probe's **validation threshold**
+(`threshold` saved by `scripts/save_probe.py`), noted `T`. Three zones:
 
-- `< T * low_ratio` → VERT (aucun signal notable).
-- `[T * low_ratio, T]` → ORANGE (vigilance, signal modéré).
-- `> T` → ROUGE (alerte forte, dépasse le seuil optimisé F1).
+- `< T * low_ratio`   : VERT (no notable signal).
+- `[T * low_ratio, T]`: ORANGE (vigilance, moderate signal).
+- `> T`               : ROUGE (strong alert, above the F1-optimised threshold).
 
-Par défaut `low_ratio = 0.5`. Ce paramétrage privilégie **la sécurité en
-montagne** : on préfère alerter un peu trop (faux positifs) qu'oublier
-un vrai orage (faux négatif). Il est configurable au chargement pour
-permettre le tuning côté produit.
+Default `low_ratio = 0.5`. This favours **mountain safety**: better to
+alert a bit too often (false positives) than to miss a real storm (false
+negative). It is configurable at load time to allow product-side tuning.
 """
 
 from __future__ import annotations
@@ -60,17 +58,22 @@ class AlertLevel(StrEnum):
 
 
 def alert_from_proba(
-    proba: float, threshold: float, low_ratio: float = 0.5
+    proba: float,
+    orange_threshold: float,
+    rouge_threshold: float,
 ) -> AlertLevel:
-    """Convertit une probabilité brute en niveau d'alerte.
+    """Convert a raw probability to an alert level using two thresholds.
 
-    - ROUGE si `proba > threshold` (au-dessus du seuil optimisé F1 sur val).
-    - ORANGE si `proba > threshold * low_ratio` (moitié du seuil par défaut).
-    - VERT sinon.
+    - ROUGE if `proba >= rouge_threshold` (strong alert).
+    - ORANGE if `proba >= orange_threshold` (vigilance).
+    - VERT otherwise.
+
+    Both thresholds are **recalibrated on validation** by target recall,
+    to favour safety (see `calibrate_alert_thresholds`).
     """
-    if proba > threshold:
+    if proba >= rouge_threshold:
         return AlertLevel.ROUGE
-    if proba > threshold * low_ratio:
+    if proba >= orange_threshold:
         return AlertLevel.ORANGE
     return AlertLevel.VERT
 
@@ -96,7 +99,7 @@ class Prediction:
 
 
 def load_probe(path: str | Path) -> dict:
-    """Charge le pickle produit par `scripts/save_probe.py`."""
+    """Load the pickle produced by `scripts/save_probe.py`."""
     path = Path(path)
     if path.is_dir():
         path = path / "probe.pkl"
@@ -105,7 +108,7 @@ def load_probe(path: str | Path) -> dict:
 
 
 class Predictor:
-    """Wrapper d'inférence, prêt à être appelé depuis une API."""
+    """Inference wrapper, ready to be called from an API."""
 
     def __init__(
         self,
@@ -120,14 +123,25 @@ class Predictor:
         self.std = np.asarray(payload["std"], dtype=np.float32)
         self.threshold: float = float(payload["threshold"])
         self.low_ratio = low_ratio
+        # alert thresholds recalibrated by target recall on validation, when
+        # present in the pickle. Otherwise fall back on the F1-max threshold
+        # with low_ratio as the ORANGE cue (backward compatibility).
+        if "orange_threshold" in payload and "rouge_threshold" in payload:
+            self.orange_threshold = float(payload["orange_threshold"])
+            self.rouge_threshold = float(payload["rouge_threshold"])
+            self.calibration = payload.get("calibration", {})
+        else:
+            self.orange_threshold = self.threshold * low_ratio
+            self.rouge_threshold = self.threshold
+            self.calibration = {}
 
-        # coefficients de la sonde logistique
+        # logistic probe coefficients
         self.scaler_mean = np.asarray(payload["scaler_mean"], dtype=np.float32)
         self.scaler_scale = np.asarray(payload["scaler_scale"], dtype=np.float32)
         self.clf_coef = np.asarray(payload["clf_coef"], dtype=np.float32).squeeze()
         self.clf_intercept = float(np.asarray(payload["clf_intercept"]).squeeze())
 
-        # encodeur gelé
+        # frozen encoder
         encoder_ckpt = Path(payload["encoder_path"]) / "model.pt"
         self.encoder = TSJEPA(self.config)
         state = torch.load(encoder_ckpt, map_location="cpu", weights_only=False)
@@ -136,10 +150,10 @@ class Predictor:
             p.requires_grad_(False)
         self.encoder.eval()
 
-    # ---- inférence ---- #
+    # ---- inference ---- #
 
     def _embed(self, X_norm: np.ndarray) -> np.ndarray:
-        """Encode + mean-pool sur les patches. Entrée : (B, Tw, V) normalisée."""
+        """Encode + mean-pool over patches. Input: (B, Tw, V), normalised."""
         x = torch.from_numpy(X_norm).float()
         with torch.no_grad():
             p = self.encoder.patch_embed(x)
@@ -154,10 +168,10 @@ class Predictor:
         return 1.0 / (1.0 + np.exp(-logits))
 
     def predict_from_raw(self, X_raw: np.ndarray) -> Prediction:
-        """Prédit à partir d'une fenêtre en **unités physiques**.
+        """Predict from a window in **physical units**.
 
-        Attend `X_raw` de forme `(Tw, V)` avec les canaux dans l'ordre de
-        `self.canaux`. On normalise avec les stats du train.
+        Expects `X_raw` of shape `(Tw, V)` with channels in the order of
+        `self.canaux`. Normalisation uses training statistics.
         """
         if X_raw.ndim != 2 or X_raw.shape[1] != len(self.canaux):
             raise ValueError(
@@ -170,20 +184,20 @@ class Predictor:
         X_norm = ((X_raw - self.mean) / self.std).astype(np.float32)[None, :, :]
         z = self._embed(X_norm)
         proba = float(self._logistic(z)[0])
-        alert = alert_from_proba(proba, self.threshold, self.low_ratio)
+        alert = alert_from_proba(proba, self.orange_threshold, self.rouge_threshold)
         return Prediction(
             proba=proba, alert=alert, threshold=self.threshold, canaux=self.canaux
         )
 
     def predict_from_norm(self, X_norm: np.ndarray) -> Prediction:
-        """Variante quand la fenêtre est déjà normalisée (test set, benchmark)."""
+        """Variant when the window is already normalised (test set, benchmark)."""
         if X_norm.shape != (self.config.Tw, len(self.canaux)):
             raise ValueError(
                 f"attendu ({self.config.Tw}, {len(self.canaux)}), obtenu {X_norm.shape}"
             )
         z = self._embed(X_norm.astype(np.float32)[None, :, :])
         proba = float(self._logistic(z)[0])
-        alert = alert_from_proba(proba, self.threshold, self.low_ratio)
+        alert = alert_from_proba(proba, self.orange_threshold, self.rouge_threshold)
         return Prediction(
             proba=proba, alert=alert, threshold=self.threshold, canaux=self.canaux
         )

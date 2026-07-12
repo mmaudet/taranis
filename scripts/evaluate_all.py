@@ -1,22 +1,22 @@
-"""Évaluation aval complète, M0 et M1, sur les trois datasets, avec transfert.
+"""Full downstream evaluation, M0 and M1, on all three datasets, with transfer.
 
-Datasets :
-- **synth** : Tw=96, pas 10 min. Le synthétique original de l'étape 1 bis.
-- **synth3h** : Tw=32, pas 3 h. Même géométrie que le réel, pour transfert.
-- **real** : Tw=32, pas 3 h. Météo-France.
+Datasets:
+- **synth**  : Tw=96, 10 min step. Original synthetic from step 1 bis.
+- **synth3h**: Tw=32, 3h step. Same geometry as real, used for transfer.
+- **real**   : Tw=32, 3h step. Meteo-France.
 
-Encodeurs (checkpoints) :
+Encoders (checkpoints):
 - runs/tsjepa_synth
 - runs/tsjepa_synth3h
 - runs/tsjepa_real
 
-Évaluations conduites :
+Evaluations performed:
 
-1. **Within-dataset** M0 et M1 sur les 3 datasets (6 lignes).
-2. **Cross-transfer** M1(synth3h) → sonde entraînée sur real, testée sur real.
-3. **Contrôle inverse** M1(real) → sonde entraînée sur synth3h, testée sur synth3h.
+1. **Within-dataset** M0 and M1 on the 3 datasets (6 rows).
+2. **Cross-transfer** M1(synth3h): probe trained on real, tested on real.
+3. **Inverse control** M1(real): probe trained on synth3h, tested on synth3h.
 
-Sortie : `runs/eval_summary.json` et `docs/assets/step7_summary.png`.
+Outputs: `runs/eval_summary.json` and `docs/assets/step7_summary.png`.
 """
 
 from __future__ import annotations
@@ -103,7 +103,7 @@ def _score_and_report(y_val, score_val, y_test, score_test):
 
 
 def eval_baseline_m0(dataset_name: str):
-    """M0 : régression logistique sur features physiques, entraînée et testée sur le même dataset."""
+    """M0: logistic regression on physics features, trained and tested on the same dataset."""
     d = _load_dataset(dataset_name)
     cfg = DATASETS[dataset_name]
     m, s = d["mean"], d["std"]
@@ -122,10 +122,10 @@ def eval_baseline_m0(dataset_name: str):
 
 
 def eval_probe(encoder_ckpt: Path, dataset_name: str):
-    """M1 : sonde linéaire aval sur un encodeur donné, appliquée à un dataset donné."""
+    """M1: downstream linear probe on a given encoder, applied to a given dataset."""
     enc = load_encoder_from_checkpoint(encoder_ckpt)
     d = _load_dataset(dataset_name)
-    # vérification de géométrie
+    # geometry check
     if enc.config.Tw != d["X_train"].shape[1]:
         return {"skipped": True, "reason": f"Tw mismatch: enc={enc.config.Tw}, data={d['X_train'].shape[1]}"}
     probe = LinearProbe(enc).fit(d["X_train"], d["y_train"])
@@ -139,7 +139,7 @@ def build_all_rows():
     for ds in DATASETS:
         rep = eval_baseline_m0(ds)
         print(f"  M0            @ {ds:8s}  →  AUC={rep['auc']:.3f} AP={rep['ap']:.3f} F1={rep['f1']:.3f}")
-        rows.append(dict(model="M0 (baseline physique)", encoder="—", train_dataset=ds, test_dataset=ds, **rep))
+        rows.append(dict(model="M0 (baseline physique)", encoder="-", train_dataset=ds, test_dataset=ds, **rep))
 
     for enc_name, enc_path in ENCODERS.items():
         for ds in DATASETS:
@@ -156,7 +156,7 @@ def figure_summary(rows):
     df = pd.DataFrame(rows)
     fig, axes = plt.subplots(1, 2, figsize=(12, 5))
 
-    # heatmap AUC
+    # AUC heatmap
     ax = axes[0]
     pivot = df.pivot_table(index="model", columns="test_dataset", values="auc")
     im = ax.imshow(pivot.values, cmap="viridis", vmin=0.5, vmax=1.0, aspect="auto")
@@ -173,7 +173,7 @@ def figure_summary(rows):
                         color="white" if v < 0.75 else "black", fontsize=10)
     fig.colorbar(im, ax=ax, label="AUC")
 
-    # heatmap F1
+    # F1 heatmap
     ax = axes[1]
     pivot_f1 = df.pivot_table(index="model", columns="test_dataset", values="f1")
     im = ax.imshow(pivot_f1.values, cmap="cividis", vmin=0.0, vmax=0.8, aspect="auto")

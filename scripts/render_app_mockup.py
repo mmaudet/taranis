@@ -1,17 +1,17 @@
-"""Rend un mockup d'écran d'application mobile pour Taranis.
+"""Render a mobile application screen mockup for Taranis.
 
-C'est une projection UI/UX à partir des données réelles d'un cas d'orage.
-Pas un vrai front, juste une visualisation pour discuter la charte et la
-lisibilité en montagne.
+UI/UX projection from real data around a storm event. Not a real front-
+end, just a visualisation to discuss the palette and mountain
+readability.
 
-Sortie : `docs/assets/step12_mobile_mockup.png`, une image au ratio d'un
-smartphone, avec :
+Output: `docs/assets/step12_mobile_mockup.png`, an image with a smartphone
+aspect ratio, containing:
 
-- en-tête station + heure,
-- gros bandeau d'alerte coloré (VERT / ORANGE / ROUGE),
-- valeur de la probabilité + libellé,
-- petit sparkline des 4 derniers jours par canal,
-- disclaimer permanent en pied.
+- station and time header,
+- large coloured alert banner (GREEN / ORANGE / RED),
+- probability value and label,
+- small sparkline of the last 4 days per channel,
+- permanent disclaimer at the bottom.
 """
 
 from __future__ import annotations
@@ -75,14 +75,14 @@ def render(station_id: str, end: datetime, out_path: Path):
     altitude = raw["altitude_m"].iloc[0]
     now = window["timestamp"].iloc[-1]
 
-    # Palette du bandeau d'alerte
+    # Alert banner palette
     color = prediction.alert.color
     text_light = "white"
 
-    # Silhouette mobile, tout en figure-coords pour un layout stable
+    # Phone silhouette, all in figure coords for a stable layout
     fig = plt.figure(figsize=(4.5, 9), facecolor="#F5F5F5")
 
-    # cadre écran (dessin sur une axe pleine page)
+    # screen frame (drawn on a full-page axis)
     frame_ax = fig.add_axes((0.0, 0.0, 1.0, 1.0))
     frame_ax.set_xlim(0, 1)
     frame_ax.set_ylim(0, 1)
@@ -100,7 +100,7 @@ def render(station_id: str, end: datetime, out_path: Path):
     frame_ax.text(0.5, 0.905, now.strftime("%d %b %Y, %H:%M UTC"),
                   ha="center", fontsize=9, color="#9E9E9E")
 
-    # bandeau d'alerte
+    # alert banner
     frame_ax.add_patch(mpatches.FancyBboxPatch(
         (0.06, 0.72), 0.88, 0.16,
         boxstyle="round,pad=0.005,rounding_size=0.04",
@@ -114,14 +114,14 @@ def render(station_id: str, end: datetime, out_path: Path):
     frame_ax.text(0.5, 0.755, f"(seuil de référence {prediction.threshold:.2f})",
                   ha="center", va="center", fontsize=8, color=text_light)
 
-    # panneau de mesures : 4 lignes, chaque ligne = label+valeur + sparkline
+    # measurement panel: 4 rows, each row = label + value + sparkline
     canaux_plot = [
         ("pressure", "Pression", "hPa", "#1A73E8"),
         ("temp", "Température", "°C", "#B00020"),
         ("humidity", "Humidité", "%", "#137333"),
         ("wind_gust", "Rafale 10 min", "m/s", "#E37400"),
     ]
-    # bornes du bloc mesures en fig-coords
+    # measurement block bounds in fig-coords
     top = 0.68
     bottom = 0.14
     n = len(canaux_plot)
@@ -129,20 +129,20 @@ def render(station_id: str, end: datetime, out_path: Path):
 
     for i, (col, label, unit, ccol) in enumerate(canaux_plot):
         y0 = top - (i + 1) * row_h
-        # label + valeur à gauche
+        # label + value on the left
         cur = window[col].iloc[-1]
         frame_ax.text(0.08, y0 + row_h * 0.60, label,
                       fontsize=9, color="#424242")
         frame_ax.text(0.08, y0 + row_h * 0.25, f"{cur:.1f} {unit}",
                       fontsize=13, weight="bold", color="#212121")
 
-        # sparkline sur une axe dédiée à droite
+        # sparkline on a dedicated axis on the right
         spark = fig.add_axes((0.42, y0 + row_h * 0.15, 0.50, row_h * 0.70))
         spark.plot(window[col].values, color=ccol, linewidth=1.6)
         spark.margins(x=0.02, y=0.10)
         spark.axis("off")
 
-    # disclaimer permanent
+    # permanent disclaimer
     frame_ax.text(
         0.5, 0.06,
         "Aide à la décision, pas une garantie.\n"

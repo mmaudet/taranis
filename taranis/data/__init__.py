@@ -1,10 +1,11 @@
-"""Chargeurs, générateurs et fenêtrage de séries temporelles météo."""
+"""Loaders, generators and windowing utilities for weather time series."""
 
 from taranis.data.meteofrance import (
     CANAUX_MF,
     CANAUX_MF_RICH,
     CODES_ORAGE_WMO,
     build_storm_labels,
+    build_storm_labels_combined,
     build_storm_labels_from_ww,
     prepare_station,
     read_synop_csv,
@@ -28,6 +29,7 @@ __all__ = [
     "CODES_ORAGE_WMO",
     "WindowedDataset",
     "build_storm_labels",
+    "build_storm_labels_combined",
     "build_storm_labels_from_ww",
     "channel_stats",
     "chronological_split",

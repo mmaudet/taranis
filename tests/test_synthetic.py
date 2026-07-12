@@ -1,4 +1,4 @@
-"""Tests du générateur météo synthétique."""
+"""Tests for the synthetic weather generator."""
 
 from __future__ import annotations
 
@@ -20,7 +20,7 @@ def test_schema_et_pas_de_temps_regulier():
         "storm_onset",
     }
     assert set(df.columns) == attendues
-    # pas de temps régulier
+    # regular time step
     diffs = df["timestamp"].diff().dropna().unique()
     assert len(diffs) == 1
     assert diffs[0] == pd.Timedelta(minutes=10)
@@ -40,7 +40,7 @@ def test_seeds_differents_donnent_signaux_differents():
 
 def test_plages_physiques_plausibles():
     df = generate(days=5.0, storms_per_day=0.5, seed=7)
-    # bornes larges mais quand même physiques
+    # loose but still physical bounds
     assert df["pressure"].between(970, 1050).all()
     assert df["humidity"].between(0, 100).all()
     assert (df["wind"] >= 0).all()
@@ -49,7 +49,7 @@ def test_plages_physiques_plausibles():
 
 def test_labels_coherents():
     df = generate(days=10.0, storms_per_day=1.0, seed=3)
-    # chaque onset doit être compris dans une fenêtre active
+    # every onset must fall inside an active window
     onsets = df.index[df["storm_onset"]].tolist()
     assert onsets, "attendu au moins un onset avec ce taux"
     for idx in onsets:
@@ -57,15 +57,15 @@ def test_labels_coherents():
 
 
 def test_signature_orage_visible():
-    """Un orage doit se traduire par une chute de pression et une hausse d'humidité."""
+    """A storm should show up as a pressure drop and a humidity rise."""
     df = generate(days=15.0, storms_per_day=1.0, seed=11)
     onsets = df.index[df["storm_onset"]].tolist()
     assert onsets
 
-    # on prend le premier onset qui a assez de contexte avant et après
-    step = 10  # minutes, cohérent avec le défaut du générateur
-    n_before = 60 // step  # 1h avant
-    n_after = 30 // step   # 30 min après
+    # pick the first onset with enough context before and after
+    step = 10  # minutes, matches the generator default
+    n_before = 60 // step  # 1h before
+    n_after = 30 // step   # 30 min after
 
     verifications = 0
     for idx in onsets:
@@ -75,7 +75,7 @@ def test_signature_orage_visible():
         p_after = df["pressure"].iloc[idx + n_after]
         h_before = df["humidity"].iloc[idx - n_before]
         h_after = df["humidity"].iloc[idx + n_after]
-        # pression baisse et humidité monte, sans exiger un seuil dur
+        # pressure falls and humidity rises, without a hard threshold
         if p_after < p_before and h_after > h_before:
             verifications += 1
 

@@ -1,15 +1,15 @@
-"""Baseline physique M0.
+"""Physics baseline M0.
 
-Elle est délibérément simple : de petites features intuitives extraites de
-la fenêtre, puis une régression logistique. C'est ce qu'un baromètre et un
-peu de bon sens font. Notre objectif n'est pas de la battre à tout prix,
-c'est de la garder comme point de référence honnête. Tant que TS-JEPA ne la
-bat pas, on documente le fait, on ne se raconte pas d'histoire.
+Intentionally simple: small intuitive features extracted from the window,
+then a logistic regression. This is what a barometer and a bit of common
+sense would give you. The goal is not to beat it at all costs but to keep
+it as an honest reference point. As long as TS-JEPA does not beat it, we
+document that fact rather than pretending otherwise.
 
-Attention : ce module travaille sur des fenêtres **dénormalisées** ou
-**normalisées**. Les features sont construites à partir de différences et de
-statistiques dans la fenêtre, donc elles se comportent correctement dans les
-deux cas. On documente clairement la sémantique de chaque feature.
+Note: this module operates on either **denormalised** or **normalised**
+windows. Features are built from within-window differences and statistics,
+so they behave correctly in both cases. Feature semantics are documented
+clearly.
 """
 
 from __future__ import annotations
@@ -40,32 +40,32 @@ def build_features(
     short_lag_min: int = 60,
     long_lag_min: int = 180,
 ) -> np.ndarray:
-    """Construit les features physiques à partir d'un batch de fenêtres.
+    """Build the physics features from a batch of windows.
 
-    Deux échelles de tendance sont utilisées :
+    Two trend scales are used:
 
-    - un lag court (`short_lag_min`, par défaut 1 heure),
-    - un lag long (`long_lag_min`, par défaut 3 heures).
+    - a short lag (`short_lag_min`, default 1 hour),
+    - a long lag (`long_lag_min`, default 3 hours).
 
-    Sur des données à pas de 10 minutes (synthétique), les défauts donnent
-    exactement les tendances 1h et 3h de la baseline historique. Sur des
-    données à pas de 3 heures (Météo-France SYNOP), on choisira des lags plus
-    longs, par exemple 3 h et 12 h.
+    On 10-minute-step data (synthetic), the defaults yield exactly the
+    1h/3h trends used by the historical baseline. On 3-hour-step data
+    (Meteo-France SYNOP), longer lags are more appropriate, for instance
+    3h and 12h.
 
-    Paramètres
+    Parameters
     ----------
-    X : np.ndarray, forme (N, Tw, 4)
-        Ordre des canaux : pressure, temp, humidity, wind.
+    X : np.ndarray, shape (N, Tw, 4)
+        Channel order: pressure, temp, humidity, wind.
     step_minutes : int
-        Pas de temps du signal.
+        Signal time step.
     short_lag_min : int
-        Durée en minutes du lag court.
+        Short-lag duration in minutes.
     long_lag_min : int
-        Durée en minutes du lag long.
+        Long-lag duration in minutes.
 
-    Retour
-    ------
-    np.ndarray, forme (N, len(FEATURE_NAMES))
+    Returns
+    -------
+    np.ndarray, shape (N, len(FEATURE_NAMES))
     """
     if X.ndim != 3 or X.shape[-1] != 4:
         raise ValueError(f"attendu (N, Tw, 4), obtenu {X.shape}")
@@ -112,10 +112,10 @@ def build_features(
 
 @dataclass
 class BaselinePhysics:
-    """Régression logistique sur features physiques.
+    """Logistic regression on physics features.
 
-    Le pipeline standardise les features avant la régression. C'est bénin ici
-    mais utile pour la stabilité et l'interprétabilité des coefficients.
+    The pipeline standardises features before the regression. Benign here,
+    but helpful for numerical stability and coefficient interpretability.
     """
 
     step_minutes: int = 10

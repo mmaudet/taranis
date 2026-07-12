@@ -1,9 +1,9 @@
-"""Télécharge tout SYNOP essentiel OMM, 62 stations, 2010 à aujourd'hui.
+"""Download the entire SYNOP essential WMO dataset, 62 stations, 2010 to today.
 
-Sortie : `data/mf/synop_full.csv` (~80 Mo, ~2.7 millions de records).
+Output: `data/mf/synop_full.csv` (~80 MB, ~2.7 million records).
 
-Une seule requête d'export CSV filtrée sur la période. Aucune clé requise,
-licence Etalab, souverain FR.
+A single CSV export request filtered on the period. No key required,
+Etalab license, French-sovereign hosting.
 """
 
 from __future__ import annotations
@@ -15,7 +15,7 @@ ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT / "data" / "mf" / "synop_full.csv"
 OUT.parent.mkdir(parents=True, exist_ok=True)
 
-# Sélection large : toutes les stations métropole + outre-mer, toute la période.
+# Broad selection: all mainland + overseas stations, whole period.
 URL = "https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/donnees-synop-essentielles-omm/exports/csv"
 WHERE = "date >= '2010-01-01' AND date < '2026-01-01'"
 SELECT = (

@@ -1,13 +1,13 @@
-"""Prépare le grand dataset Météo-France enrichi (5 canaux au lieu de 4).
+"""Prepare the enriched Meteo-France dataset (5 channels instead of 4).
 
-Étape 9. Ajoute `wind_gust` (rafale sur 10 min) comme 5e canal. Ce canal est
-un indicateur puissant d'orage convectif, en général surestimé par la
-baseline physique qui n'en tire pas parti.
+Step 9. Adds `wind_gust` (10-min gust) as a 5th channel. This channel is
+a strong indicator of convective storms; the physics baseline overshoots
+here because it does not exploit it.
 
-- Structure des fenêtres : `(N, Tw, 5)`.
-- L'ordre des canaux est fixé par `CANAUX_MF_RICH`.
-- La baseline M0 reste inchangée : elle lit les 4 premiers canaux et ignore
-  le reste. C'est délibéré, pour rendre la comparaison M0 vs M1 propre.
+- Window structure: `(N, Tw, 5)`.
+- Channel order fixed by `CANAUX_MF_RICH`.
+- The M0 baseline is left unchanged: it reads the first 4 channels and
+  ignores the rest. Deliberate, to keep the M0 vs M1 comparison clean.
 """
 
 from __future__ import annotations
@@ -64,7 +64,7 @@ def main():
 
     for i, (_sid, raw) in enumerate(stations.items(), 1):
         d = prepare_station(raw, freq="3h", rain_seuil_mm=RAIN_SEUIL_MM)
-        # rafale manquante = on remplace par vent (garanti par resample_regular)
+        # missing gust: fall back to wind speed (guaranteed by resample_regular)
         for split, (t_start, t_end) in SPLITS.items():
             sub = _split_by_date(d, t_start, t_end)
             sub = sub.dropna(subset=list(CANAUX_MF_RICH)).reset_index(drop=True)
@@ -126,7 +126,7 @@ def main():
         step_minutes=np.int64(STEP_MIN),
         source=(
             "meteo-france synop, opendatasoft, "
-            f"{len(stations)} stations, 2010-2026, canaux enrichis"
+            f"{len(stations)} stations, 2010-2026, enriched channels"
         ),
     )
     print(f"OK : {OUT}, {OUT.stat().st_size / 1_000_000:.1f} Mo")

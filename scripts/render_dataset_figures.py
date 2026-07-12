@@ -1,10 +1,10 @@
-"""Figures descriptives du dataset synthétique pour l'étape 1b.
+"""Descriptive figures of the synthetic dataset for step 1b.
 
-Trois figures :
+Three figures:
 
-- step1b_timeline.png    : timeline des orages sur les 365 jours simulés.
-- step1b_splits.png      : répartition des fenêtres train/val/test + prévalence.
-- step1b_distributions.png : histogrammes par canal (train uniquement).
+- step1b_timeline.png       : timeline of storms across the 365 simulated days.
+- step1b_splits.png         : train/val/test window counts and prevalence.
+- step1b_distributions.png  : per-channel histograms (train only).
 """
 
 from __future__ import annotations
@@ -55,7 +55,7 @@ def figure_splits(z: dict):
 
     fig, axes = plt.subplots(1, 2, figsize=(11, 4))
 
-    # Bar chart des tailles
+    # Bar chart of sizes
     ax = axes[0]
     labels = ["Train", "Val", "Test"]
     positives = [train_pos, val_pos, test_pos]
@@ -74,7 +74,7 @@ def figure_splits(z: dict):
     ax.legend(loc="upper right")
     ax.grid(axis="y", alpha=0.3)
 
-    # Prévalence
+    # Prevalence
     ax = axes[1]
     prevalences = [train_pos / train_n, val_pos / val_n, test_pos / test_n]
     ax.bar(x, prevalences, width, color="#B00020", alpha=0.7)

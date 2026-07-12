@@ -1,14 +1,14 @@
-"""Prépare le dataset de pré-entraînement à partir des NetCDF ERA5.
+"""Prepare the pre-training dataset from ERA5 NetCDF files.
 
-Entrée   : les fichiers `.nc` produits par `scripts/fetch_era5.py`.
-Sortie   : `data/era5_pretrain_windows.npz`.
+Input : `.nc` files produced by `scripts/fetch_era5.py`.
+Output: `data/era5_pretrain_windows.npz`.
 
-**Usage** : sans étiquette. ERA5 n'a pas de vérité terrain d'orage, seulement
-des précipitations. On garde `storm_active` et `storm_onset` construits comme
-proxy pluie forte, mais **on ne s'en sert pas** en pré-entraînement JEPA
-(par nature auto-supervisé). Ces étiquettes servent uniquement si l'on
-souhaite entraîner une sonde aval directement sur ERA5, ce qui n'est pas le
-protocole retenu (on préfère fine-tuner la sonde sur SYNOP).
+**Usage**: without labels. ERA5 has no storm ground truth, only
+precipitation. We keep `storm_active` and `storm_onset` built as a heavy
+rain proxy, but **we do not use them** in JEPA pre-training, which is
+self-supervised by nature. Those labels only matter if one wants to train
+a downstream probe directly on ERA5, which is not the protocol used here
+(we prefer fine-tuning the probe on SYNOP).
 """
 
 from __future__ import annotations
@@ -31,9 +31,9 @@ ROOT = Path(__file__).resolve().parent.parent
 ERA5_DIR = ROOT / "data" / "era5"
 OUT = ROOT / "data" / "era5_pretrain_windows.npz"
 
-# Fréquence native ERA5 : 1 h. Cible pédagogique : garder 1 h natif.
-Tw = 48   # 48 h de contexte, 2 jours
-H = 12    # 12 h d'anticipation
+# Native ERA5 frequency: 1 h. Teaching choice: keep the native 1 h step.
+Tw = 48   # 48 h of context, 2 days
+H = 12    # 12 h of anticipation
 STRIDE = 1
 STEP_MIN = 60
 
@@ -57,7 +57,7 @@ def main():
         if len(d) < Tw + H:
             continue
         ds = make_windows(d, Tw=Tw, H=H, stride=STRIDE, label_col="storm_onset")
-        # split chronologique interne à chaque point
+        # per-point chronological split
         train, val, test = chronological_split(ds, ratios=(0.7, 0.15, 0.15))
         all_splits["train"].append(train)
         all_splits["val"].append(val)
