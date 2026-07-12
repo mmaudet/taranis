@@ -1,0 +1,62 @@
+# Workflow GitHub Actions à installer dans le dépôt Taranis (`.github/workflows/`)
+# pour publier automatiquement le carnet MkDocs sous public/taranis/ du blog Astro
+# à chaque tag `v*` du dépôt Taranis.
+#
+# Prérequis côté secrets du dépôt Taranis :
+#   BLOG_REPO_TOKEN   Token GitHub avec droit "contents: write" sur le dépôt blog
+#   BLOG_REPO         Format "owner/repo" du dépôt blog (ex : mmaudet/blog.maudet.cloud)
+#
+# À adapter si l'organisation du dépôt blog est différente (branche par défaut,
+# emplacement de public/taranis/, etc.).
+
+name: Publish MkDocs to blog
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Taranis
+        uses: actions/checkout@v4
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+
+      - name: Install docs deps
+        run: uv sync --extra docs
+
+      - name: Build MkDocs
+        run: uv run mkdocs build --strict --site-dir site
+
+      - name: Checkout blog repo
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ secrets.BLOG_REPO }}
+          token: ${{ secrets.BLOG_REPO_TOKEN }}
+          path: blog
+
+      - name: Copy site to blog
+        run: |
+          rm -rf blog/public/taranis
+          mkdir -p blog/public/taranis
+          cp -r site/* blog/public/taranis/
+
+      - name: Commit and push to blog
+        working-directory: blog
+        run: |
+          git config user.name "taranis-bot"
+          git config user.email "taranis-bot@users.noreply.github.com"
+          git add public/taranis/
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "docs(taranis): update carnet from ${{ github.ref_name }}"
+            git push
+          fi
