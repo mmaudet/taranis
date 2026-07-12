@@ -52,6 +52,7 @@ nav:
   - "Étape 10, de vrais labels d'orage (WMO)": 10-vrais-labels-orage.md
   - "Étape 11, l'app d'inférence": 11-app-inference.md
   - "Étape 12, le serveur autonome": 12-serveur-autonome.md
+  - "Étape 13, journal honnête de calibration": 13-journal-calibration.md
 
 markdown_extensions:
   - admonition
