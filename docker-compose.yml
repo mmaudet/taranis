@@ -1,0 +1,18 @@
+# Serveur Taranis autonome, un seul container.
+# Usage :
+#   docker compose up --build
+# Puis ouvrir http://localhost:8000 dans un navigateur.
+
+services:
+  taranis:
+    build: .
+    image: taranis:latest
+    container_name: taranis
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - TARANIS_PROBE=/app/runs/probe/ww_rich
+    # décommenter pour monter une autre sonde depuis l'hôte :
+    # volumes:
+    #   - ./runs/probe/other:/app/runs/probe/other

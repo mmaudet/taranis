@@ -1,0 +1,199 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#455A64">
+<title>Taranis · Serveur autonome</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; background: #ECEFF1;
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+                             "Helvetica Neue", Arial, sans-serif; color: #212121; }
+  .app { max-width: 480px; margin: 0 auto; min-height: 100vh; position: relative;
+         padding: env(safe-area-inset-top, 0) 16px env(safe-area-inset-bottom, 0); }
+
+  header { padding: 20px 4px 8px; text-align: center; }
+  header h1 { margin: 0; font-size: 22px; letter-spacing: 4px; font-weight: 700;
+              color: #263238; }
+  header .subtitle { margin-top: 4px; font-size: 11px; color: #90A4AE; }
+
+  .live-badge { display: inline-block; margin: 4px 0 8px; padding: 3px 8px;
+                background: #E8F5E9; color: #137333; font-size: 10px;
+                border-radius: 999px; font-weight: 700; letter-spacing: 1px; }
+  .live-badge::before { content: "● "; color: #137333; }
+
+  select.station-picker { width: 100%; padding: 12px 14px; font-size: 15px;
+                          border-radius: 12px; border: 1px solid #CFD8DC;
+                          background: white url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M0 0l6 8 6-8' fill='%23607D8B'/></svg>") no-repeat right 14px center;
+                          appearance: none; -webkit-appearance: none;
+                          color: #263238; }
+
+  .refresh { margin: 12px 0 6px; text-align: center; }
+  .refresh button { padding: 10px 22px; font-size: 13px; border: none;
+                     background: #263238; color: white; border-radius: 999px;
+                     font-weight: 600; letter-spacing: .5px; cursor: pointer; }
+  .refresh button:disabled { opacity: .5; cursor: wait; }
+
+  .screen { background: #fff; border-radius: 20px; padding: 22px 20px 22px;
+            box-shadow: 0 6px 22px rgba(0,0,0,.08); margin-top: 14px; }
+  .station { text-align: center; margin: 0 0 2px; font-size: 16px; color: #263238;
+             font-weight: 600; }
+  .region { text-align: center; margin: 0 0 4px; font-size: 11px; color: #78909C;
+            text-transform: uppercase; letter-spacing: 1px; }
+  .stamp { text-align: center; margin: 0 0 16px; font-size: 11px; color: #B0BEC5; }
+
+  .alert-banner { border-radius: 18px; padding: 18px 12px 16px; color: white;
+                   text-align: center; margin-bottom: 20px; }
+  .alert-title { font-size: 19px; font-weight: 800; letter-spacing: 1px; }
+  .alert-proba { margin-top: 6px; font-size: 13px; opacity: .95; }
+  .alert-seuil { margin-top: 2px; font-size: 10px; opacity: .8; }
+
+  .row { display: grid; grid-template-columns: 110px 1fr; align-items: center;
+         gap: 10px; padding: 10px 0; border-bottom: 1px dashed #ECEFF1; }
+  .row:last-child { border-bottom: none; }
+  .label { font-size: 11px; color: #78909C; }
+  .value { font-size: 15px; font-weight: 700; color: #212121; margin-top: 2px; }
+  .spark { width: 100%; height: 44px; }
+
+  .status { text-align: center; padding: 40px 20px; color: #78909C; font-size: 13px; }
+  .error { color: #B00020; }
+  .footer { text-align: center; font-size: 10px; color: #90A4AE; padding: 20px 20px 30px;
+            font-style: italic; }
+
+  @media (min-width: 640px) {
+    header h1 { font-size: 26px; }
+    .screen { padding: 26px 26px 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>TARANIS</h1>
+    <div class="subtitle">Nowcasting orage · TS-JEPA + sonde WMO</div>
+    <div><span class="live-badge">LIVE</span></div>
+  </header>
+
+  <select class="station-picker" id="station">
+    <option value="07591">EMBRUN — Alpes du Sud (871 m)</option>
+    <option value="07471">LE PUY — Massif Central (833 m)</option>
+    <option value="07558">MILLAU — Causses (712 m)</option>
+    <option value="07481">LYON — Vallée du Rhône (235 m)</option>
+    <option value="07690">NICE — Côte d'Azur</option>
+    <option value="07747">PERPIGNAN — Roussillon</option>
+    <option value="07510">BORDEAUX — Aquitaine</option>
+    <option value="07110">BREST — Bretagne</option>
+    <option value="07037">ROUEN — Normandie</option>
+    <option value="07149">ORLY — Île-de-France</option>
+    <option value="07072">REIMS — Champagne</option>
+    <option value="07190">STRASBOURG — Alsace</option>
+    <option value="07761">AJACCIO — Corse-du-Sud</option>
+    <option value="07790">BASTIA — Haute-Corse</option>
+    <option value="07630">TOULOUSE — Sud-Ouest</option>
+    <option value="07299">BÂLE-MULHOUSE — Alsace</option>
+  </select>
+
+  <div class="refresh">
+    <button id="refresh">Actualiser la prédiction</button>
+  </div>
+
+  <div id="result">
+    <div class="status">Choisis une station et actualise pour lancer une prédiction live.</div>
+  </div>
+
+  <div class="footer">
+    Aide à la décision, pas une garantie.<br>
+    Ne remplace pas les bulletins officiels ni le jugement de l'utilisateur.<br>
+    En montagne, un faux négatif peut être mortel.
+  </div>
+</div>
+
+<script>
+  const select = document.getElementById('station');
+  const btn = document.getElementById('refresh');
+  const target = document.getElementById('result');
+
+  const CANAUX = [
+    { key: 'pressure', name: 'Pression', unit: 'hPa', color: '#1A73E8' },
+    { key: 'temp', name: 'Température', unit: '°C', color: '#B00020' },
+    { key: 'humidity', name: 'Humidité', unit: '%', color: '#137333' },
+    { key: 'wind_gust', name: 'Rafale 10 min', unit: 'm/s', color: '#E37400' },
+  ];
+
+  function sparkline(values, color, w = 280, h = 44, pad = 3) {
+    const lo = Math.min(...values), hi = Math.max(...values);
+    const span = Math.max(hi - lo, 1e-6);
+    const step = (w - 2 * pad) / Math.max(values.length - 1, 1);
+    const pts = values.map((v, i) => {
+      const x = pad + i * step;
+      const y = h - pad - (v - lo) / span * (h - 2 * pad);
+      return `${x.toFixed(1)},${y.toFixed(1)}`;
+    }).join(' ');
+    return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg"
+                 preserveAspectRatio="none" width="100%" height="${h}">
+              <polyline points="${pts}" fill="none" stroke="${color}"
+                        stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
+            </svg>`;
+  }
+
+  async function refresh() {
+    const sid = select.value;
+    btn.disabled = true;
+    target.innerHTML = '<div class="status">Chargement des mesures et calcul de la prédiction…</div>';
+    try {
+      const r = await fetch(`/stations/${sid}/live?with_window=true`);
+      if (!r.ok) {
+        const detail = await r.json().catch(() => ({}));
+        throw new Error(detail.detail || `HTTP ${r.status}`);
+      }
+      const data = await r.json();
+      render(data);
+    } catch (e) {
+      target.innerHTML = `<div class="status error">Erreur : ${e.message}</div>`;
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function render(data) {
+    const p = data.prediction;
+    const win = data.window || {};
+    const stamp = new Date(data.derniere_mesure).toLocaleString('fr-FR', {
+      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+
+    let rows = '';
+    for (const c of CANAUX) {
+      const vals = win[c.key];
+      if (!vals || !vals.length) continue;
+      const cur = vals[vals.length - 1];
+      rows += `<div class="row">
+                <div><div class="label">${c.name}</div>
+                  <div class="value">${cur.toFixed(1)} ${c.unit}</div></div>
+                <div class="spark">${sparkline(vals, c.color)}</div>
+              </div>`;
+    }
+
+    target.innerHTML = `
+      <div class="screen">
+        <div class="station">${data.station_nom}</div>
+        <div class="region">altitude ${Math.round(data.altitude_m)} m</div>
+        <div class="stamp">${stamp} UTC</div>
+        <div class="alert-banner" style="background:${p.alerte_couleur}">
+          <div class="alert-title">${p.alerte_libelle.toUpperCase()}</div>
+          <div class="alert-proba">p(orage 24 h) = ${p.proba_orage.toFixed(2)}</div>
+          <div class="alert-seuil">(seuil de référence ${p.seuil_reference.toFixed(2)})</div>
+        </div>
+        ${rows}
+      </div>
+    `;
+  }
+
+  btn.addEventListener('click', refresh);
+  select.addEventListener('change', refresh);
+  refresh();  // premier chargement automatique
+</script>
+</body>
+</html>

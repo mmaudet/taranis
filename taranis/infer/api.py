@@ -28,6 +28,8 @@ from pydantic import BaseModel, Field
 try:
     import requests
     from fastapi import FastAPI, HTTPException
+    from fastapi.responses import FileResponse
+    from fastapi.staticfiles import StaticFiles
 except ImportError as e:  # pragma: no cover - installation optionnelle
     raise SystemExit(
         "fastapi/requests requis. Installer avec :\n"
@@ -38,6 +40,7 @@ from taranis.data.meteofrance import CANAUX_MF_RICH, prepare_station, read_synop
 from taranis.infer.inference import Predictor
 
 ROOT = Path(__file__).resolve().parent.parent.parent
+STATIC_DIR = Path(__file__).parent / "static"
 PROBE_PATH = Path(os.environ.get("TARANIS_PROBE", ROOT / "runs" / "probe" / "ww_rich"))
 
 app = FastAPI(
@@ -45,6 +48,20 @@ app = FastAPI(
     version="0.2",
     description="Nowcasting orage à partir de mesures capteur ponctuelles.",
 )
+
+
+# Sert les fichiers statiques du front sous /static (CSS/JS futurs)
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+
+
+@app.get("/")
+def index():
+    """Page HTML mobile-first, sélecteur de station et prédictions live."""
+    index_html = STATIC_DIR / "index.html"
+    if not index_html.exists():
+        raise HTTPException(500, "index.html manquant dans le paquet installé")
+    return FileResponse(index_html, media_type="text/html")
 
 _predictor: Predictor | None = None
 
@@ -122,37 +139,59 @@ def predict(payload: PredictIn):
 # Récupération SYNOP live
 # ---------------------------------------------------------------------------
 
-_OPENDS = (
-    "https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/"
-    "donnees-synop-essentielles-omm/exports/csv"
-)
+
+def _latest_synop_date(station_id: str):
+    """Retourne la date SYNOP la plus récente disponible pour la station."""
+    r = requests.get(
+        "https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/"
+        "donnees-synop-essentielles-omm/records",
+        params={
+            "where": f"numer_sta='{station_id.zfill(5)}'",
+            "select": "max(date) as fin",
+            "limit": 1,
+        },
+        timeout=30,
+    )
+    r.raise_for_status()
+    fin = r.json()["results"][0]["fin"]
+    from datetime import datetime
+    return datetime.fromisoformat(fin.replace("Z", "+00:00"))
 
 
-def _fetch_recent_synop(station_id: str, days: int = 5) -> str:
-    """Télécharge les N derniers jours SYNOP pour une station, retourne un CSV texte."""
-    from datetime import UTC, datetime, timedelta
+def _fetch_recent_synop(station_id: str, days: int = 6, end=None) -> str:
+    """Télécharge les mesures SYNOP jusqu'à `end` (ou dernière date dispo)."""
+    from datetime import timedelta
 
-    end = datetime.now(UTC)
+    if end is None:
+        end = _latest_synop_date(station_id)
     start = end - timedelta(days=days)
-    params = {
-        "where": (
-            f"numer_sta='{station_id.zfill(5)}' "
-            f"AND date >= '{start:%Y-%m-%d}' "
-            f"AND date < '{(end + timedelta(days=1)):%Y-%m-%d}'"
-        ),
-        "select": (
-            "numer_sta,nom,altitude,date,pres,pmer,tc,u,ff,dd,rr1,rr3,raf10,ww"
-        ),
-        "delimiter": ";",
-    }
-    r = requests.get(_OPENDS, params=params, timeout=30)
+    r = requests.get(
+        "https://public.opendatasoft.com/api/explore/v2.1/catalog/datasets/"
+        "donnees-synop-essentielles-omm/exports/csv",
+        params={
+            "where": (
+                f"numer_sta='{station_id.zfill(5)}' "
+                f"AND date >= '{start:%Y-%m-%d}' "
+                f"AND date <= '{(end + timedelta(days=1)):%Y-%m-%d}'"
+            ),
+            "select": (
+                "numer_sta,nom,altitude,date,pres,pmer,tc,u,ff,dd,rr1,rr3,raf10,ww"
+            ),
+            "delimiter": ";",
+        },
+        timeout=60,
+    )
     r.raise_for_status()
     return r.text
 
 
 @app.get("/stations/{station_id}/live")
-def station_live(station_id: str):
-    """Récupère les derniers jours SYNOP, calcule une prédiction et renvoie tout."""
+def station_live(station_id: str, with_window: bool = False):
+    """Récupère les derniers jours SYNOP disponibles, calcule une prédiction et renvoie tout.
+
+    Si `with_window=true`, la réponse inclut aussi la fenêtre par canal pour
+    afficher les sparklines côté front.
+    """
     from io import StringIO
 
     pred = get_predictor()
@@ -176,10 +215,11 @@ def station_live(station_id: str):
             detail=f"pas assez de mesures pour former une fenêtre ({len(d)}/{Tw})",
         )
 
-    window = d.iloc[-Tw:][list(CANAUX_MF_RICH)].to_numpy(dtype=np.float32)
-    prediction = pred.predict_from_raw(window)
+    window = d.iloc[-Tw:]
+    X = window[list(CANAUX_MF_RICH)].to_numpy(dtype=np.float32)
+    prediction = pred.predict_from_raw(X)
 
-    return {
+    payload = {
         "station_id": station_id,
         "station_nom": raw["station_name"].iloc[0],
         "altitude_m": float(raw["altitude_m"].iloc[0]),
@@ -187,3 +227,8 @@ def station_live(station_id: str):
         "n_pas_utilises": Tw,
         "prediction": prediction.to_dict(),
     }
+    if with_window:
+        payload["window"] = {
+            c: window[c].astype(float).tolist() for c in CANAUX_MF_RICH
+        }
+    return payload

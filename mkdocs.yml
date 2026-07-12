@@ -51,6 +51,7 @@ nav:
   - "Étape 9, enrichir les canaux SYNOP": 09-canaux-enrichis.md
   - "Étape 10, de vrais labels d'orage (WMO)": 10-vrais-labels-orage.md
   - "Étape 11, l'app d'inférence": 11-app-inference.md
+  - "Étape 12, le serveur autonome": 12-serveur-autonome.md
 
 markdown_extensions:
   - admonition
