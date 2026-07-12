@@ -53,6 +53,7 @@ nav:
   - "Étape 11, l'app d'inférence": 11-app-inference.md
   - "Étape 12, le serveur autonome": 12-serveur-autonome.md
   - "Étape 13, journal honnête de calibration": 13-journal-calibration.md
+  - "Étape 14, la physique du modèle": 14-physique-modele.md
 
 markdown_extensions:
   - admonition
