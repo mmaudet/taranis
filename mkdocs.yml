@@ -50,6 +50,7 @@ nav:
   - "Étape 8, passage à l'échelle (ERA5 + SYNOP + GPU)": 08-passage-a-l-echelle.md
   - "Étape 9, enrichir les canaux SYNOP": 09-canaux-enrichis.md
   - "Étape 10, de vrais labels d'orage (WMO)": 10-vrais-labels-orage.md
+  - "Étape 11, l'app d'inférence": 11-app-inference.md
 
 markdown_extensions:
   - admonition

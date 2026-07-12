@@ -33,6 +33,12 @@ era5 = [
   "xarray>=2024.1",
   "netCDF4>=1.6",
 ]
+api = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "requests>=2.32",
+  "httpx>=0.27",
+]
 
 [build-system]
 requires = ["hatchling"]
