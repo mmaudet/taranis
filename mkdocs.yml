@@ -1,0 +1,71 @@
+site_name: Taranis
+site_description: "Construire pas à pas un modèle TS-JEPA d'alerte orage."
+site_author: Michel-Marie Maudet
+# À ajuster selon l'hébergement du dépôt et du site final.
+site_url: ""
+
+# Décommenter et adapter quand le dépôt est publié.
+# repo_url: https://github.com/<owner>/taranis
+# repo_name: <owner>/taranis
+
+theme:
+  name: material
+  language: fr
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/weather-sunny
+        name: Passer en mode sombre
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: amber
+      toggle:
+        icon: material/weather-night
+        name: Passer en mode clair
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.indexes
+    - toc.follow
+    - content.code.copy
+    - content.code.annotate
+
+nav:
+  - Accueil: index.md
+  - Le plan pédagogique: 00-plan.md
+  - "Étape 1, le problème": 01-le-probleme.md
+  - "Étape 1 bis, le dataset d'entraînement": 01b-le-dataset.md
+  - "Étape 1 ter, brancher les données réelles": 01c-donnees-reelles.md
+  - "Étape 2, la baseline honnête": 02-baseline.md
+  - "Étape 3, pourquoi des représentations": 03-representations.md
+  - "Étape 4, JEPA en une image": 04-jepa-idee.md
+  - "Étape 5, TS-JEPA brique par brique": 05-tsjepa-briques.md
+  - "Étape 6, entraîner et surveiller le collapse": 06-training.md
+  - "Étape 7, le verdict honnête": 07-verdict.md
+  - "Étape 8, passage à l'échelle (ERA5 + SYNOP + GPU)": 08-passage-a-l-echelle.md
+  - "Étape 9, enrichir les canaux SYNOP": 09-canaux-enrichis.md
+  - "Étape 10, de vrais labels d'orage (WMO)": 10-vrais-labels-orage.md
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - md_in_html
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.arithmatex:
+      generic: true
+
+extra_javascript:
+  - https://polyfill.io/v3/polyfill.min.js?features=es6
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
