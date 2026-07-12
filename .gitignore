@@ -1,0 +1,37 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Environnements
+.venv/
+.env
+
+# uv
+uv.lock
+
+# Données locales (jamais versionnées)
+data/*
+!data/.gitkeep
+
+# Sorties de modèles et checkpoints
+runs/
+checkpoints/
+*.ckpt
+*.pt
+*.onnx
+
+# MkDocs
+site/
+
+# Notebooks
+.ipynb_checkpoints/
+
+# Éditeurs
+.vscode/
+.idea/
+*.swp
+.DS_Store
