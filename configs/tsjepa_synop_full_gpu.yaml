@@ -1,0 +1,40 @@
+# TS-JEPA sur SYNOP full (62 stations, 2010-2026), cible GPU.
+# Utilisable seule ou comme fine-tuning d'un encodeur ERA5.
+# Volume 1.9 M fenêtres train, batch 512, 30 min à 1 h sur GPU moderne.
+
+dataset: data/real_full_windows.npz
+
+model:
+  Tw: 32
+  n_canaux: 4
+  patch_len: 4
+  d_model: 128
+  n_layers_encoder: 6
+  n_layers_predictor: 4
+  n_heads: 8
+  mlp_ratio: 4.0
+  tau_ema: 0.996
+
+trainer:
+  n_steps: 30000
+  batch_size: 512
+  val_every: 500
+  val_batches: 8
+  log_every: 200
+
+  lr_max: 5.0e-4
+  lr_min: 1.0e-6
+  warmup_steps: 1500
+  weight_decay: 5.0e-2
+  grad_clip: 1.0
+
+  tau_start: 0.996
+  tau_end: 0.9999
+
+  n_blocks: 2
+  block_size: 2
+
+  seed: 0
+  device: cuda
+
+output: runs/tsjepa_synop_full_gpu

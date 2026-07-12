@@ -1,0 +1,40 @@
+# TS-JEPA pré-entraînement massif sur ERA5, cible GPU.
+# Dimensions et durée choisies pour tirer parti d'un L40S / A100 / DGX Spark.
+# Volume attendu ~1.3 M fenêtres. Un époque prend quelques minutes sur GPU.
+
+dataset: data/era5_pretrain_windows.npz
+
+model:
+  Tw: 48         # 48 h de contexte
+  n_canaux: 4
+  patch_len: 6   # 8 patches par fenêtre
+  d_model: 128
+  n_layers_encoder: 6
+  n_layers_predictor: 4
+  n_heads: 8
+  mlp_ratio: 4.0
+  tau_ema: 0.996
+
+trainer:
+  n_steps: 50000
+  batch_size: 512
+  val_every: 500
+  val_batches: 8
+  log_every: 200
+
+  lr_max: 5.0e-4
+  lr_min: 1.0e-6
+  warmup_steps: 2000
+  weight_decay: 5.0e-2
+  grad_clip: 1.0
+
+  tau_start: 0.996
+  tau_end: 0.9999
+
+  n_blocks: 2
+  block_size: 2
+
+  seed: 0
+  device: cuda   # nécessite GPU CUDA disponible
+
+output: runs/tsjepa_era5_gpu
