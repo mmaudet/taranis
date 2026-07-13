@@ -23,6 +23,9 @@ checkpoints/
 *.ckpt
 *.pt
 *.onnx
+# Except the PWA production model, which is small (476 KB) and must be
+# tracked so a fresh clone can serve the app.
+!taranis/infer/static/models/*.onnx
 
 # MkDocs
 site/
