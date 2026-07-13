@@ -4,14 +4,19 @@
 const KEY = "taranis.settings.v1";
 
 const DEFAULTS = {
-  engine: "hgb",             // 'hgb' or 'jepa'
-  theme: "night",            // 'night' or 'day'
-  dataSource: "openmeteo",   // default: real data at user's location.
-                             // Falls back to mock only if network is off
-                             // or geolocation was declined.
-  meteoOnline: true,         // Open-Meteo context panel visible by default
+  engine: "hgb",              // 'hgb' or 'jepa'
+  theme: "night",             // 'night' or 'day'
+  dataSource: "openmeteo",    // default: real data at user's location.
+                              // Falls back to mock only if network is off
+                              // or geolocation was declined.
+  meteoOnline: true,          // Open-Meteo context panel visible by default
+  locationRefreshMin: 10,     // Poll GPS every N minutes; 0 = manual only.
+                              // 10 min matches the "hiking" use case where
+                              // the hiker moves a few km/h and wants the
+                              // context (region name + Open-Meteo backfill)
+                              // to follow. 300 m threshold before we act.
   location: {
-    lat: 45.90,              // Chamonix default until geolocation runs
+    lat: 45.90,               // Chamonix default until geolocation runs
     lon: 6.87,
     label: "Chamonix",
   },

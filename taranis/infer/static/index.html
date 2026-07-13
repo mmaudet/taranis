@@ -393,6 +393,19 @@
 
     <div class="row">
       <div>
+        <div class="name" data-i18n="settings.gps_refresh">Auto position</div>
+        <div class="help" data-i18n="settings.gps_refresh.help">Rafraîchissement automatique GPS</div>
+      </div>
+      <select id="opt-gps-refresh">
+        <option value="0" data-i18n="settings.gps_refresh.off">Manuel</option>
+        <option value="10" data-i18n="settings.gps_refresh.10">10 min · randonnée</option>
+        <option value="30" data-i18n="settings.gps_refresh.30">30 min</option>
+        <option value="60" data-i18n="settings.gps_refresh.60">1 h</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <div>
         <div class="name" data-i18n="settings.clear">Vider le buffer</div>
         <div class="help" data-i18n="settings.clear.help">—</div>
       </div>

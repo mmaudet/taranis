@@ -71,6 +71,67 @@ function applyTheme(theme) {
 }
 
 let _omTimer = null;
+let _gpsTimer = null;
+
+// Great-circle distance in metres between two lat/lon points.
+function haversineMeters(lat1, lon1, lat2, lon2) {
+    const R = 6371000;
+    const toRad = (d) => d * Math.PI / 180;
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) ** 2
+        + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.asin(Math.sqrt(a));
+}
+
+function scheduleGpsRefresh() {
+    if (_gpsTimer) { clearInterval(_gpsTimer); _gpsTimer = null; }
+    const minutes = STATE.settings.locationRefreshMin || 0;
+    if (minutes <= 0) return;
+    _gpsTimer = setInterval(silentGpsRefresh, minutes * 60 * 1000);
+}
+
+// Called by the timer without any user interaction.  Reuses the browser
+// permission that the initial "Localiser" tap already granted.  If the
+// new position is within 300 m of the saved one, we do nothing (a
+// hiker at rest, or GPS wobble); if further, we refresh label +
+// reverse geocoding + Open-Meteo buffer + prediction.
+async function silentGpsRefresh() {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    if (typeof window !== "undefined" && window.isSecureContext === false) return;
+    navigator.geolocation.getCurrentPosition(async (pos) => {
+        const prev = STATE.settings.location || {};
+        if (prev.lat && prev.lon) {
+            const d = haversineMeters(prev.lat, prev.lon,
+                pos.coords.latitude, pos.coords.longitude);
+            if (d < 300) return;  // ignore GPS drift and stationary user
+        }
+        const label = formatLocation(pos.coords.latitude, pos.coords.longitude);
+        let name = null;
+        try {
+            const rev = await reverseGeocode(pos.coords.latitude, pos.coords.longitude,
+                STATE.settings.language || "en");
+            name = rev.name;
+        } catch (_) { /* fallback silently */ }
+        STATE.settings = saveSettings({
+            location: {
+                lat: pos.coords.latitude,
+                lon: pos.coords.longitude,
+                label,
+                name,
+                altitude: pos.coords.altitude || null,
+            },
+        });
+        updateLocationLabel();
+        toast(`${t("toast.location_moved")}${name ? " · " + name : ""}`);
+        if (STATE.settings.dataSource === "openmeteo") {
+            await activateDataSource("openmeteo", false);
+            tick();
+            refreshContextPanel();
+        }
+    }, () => { /* denied or timeout: silent */ },
+       { enableHighAccuracy: false, maximumAge: 60000, timeout: 15000 });
+}
 
 async function activateDataSource(source, showToast) {
     const tag = $("#sensor-tag");
@@ -594,6 +655,15 @@ async function setupDrawer() {
         tick();
     });
 
+    const gpsSel = $("#opt-gps-refresh");
+    gpsSel.value = String(s.locationRefreshMin ?? 10);
+    gpsSel.addEventListener("change", () => {
+        STATE.settings = saveSettings({
+            locationRefreshMin: parseInt(gpsSel.value, 10) || 0,
+        });
+        scheduleGpsRefresh();
+    });
+
     const meteoSw = $("#opt-meteo");
     meteoSw.checked = s.meteoOnline;
     meteoSw.addEventListener("change", () => {
@@ -731,6 +801,9 @@ async function boot() {
         $("#clock").textContent = formatClock();
     }, 5000);
     $("#clock").textContent = formatClock();
+
+    // Silent auto-GPS refresh cadence (default 10 min for hiking).
+    scheduleGpsRefresh();
 
     // Interactive crosshair on both charts.
     installCrosshair("live", "live-chart-wrap", "live-chart-overlay", "live-crosshair-tip",
