@@ -58,3 +58,10 @@ ignore = ["E501"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-ra -q"
+
+[dependency-groups]
+dev = [
+    "onnxruntime>=1.27.0",
+    "onnxscript>=0.7.1",
+    "skl2onnx>=1.20.0",
+]

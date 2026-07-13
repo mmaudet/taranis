@@ -56,6 +56,8 @@ nav:
   - "Étape 14, la physique du modèle": 14-physique-modele.md
   - "Étape 15, évaluation rigoureuse": 15-evaluation-rigoureuse.md
   - "Étape 16, recalibration des seuils": 16-recalibration.md
+  - "Étape 17, TS-JEPA vs baseline HGB (contrôle)": 17-baseline-vs-jepa.md
+  - "Étape 18, sonde capteur 3 canaux": 18-sonde-capteur-3ch.md
 
 markdown_extensions:
   - admonition

@@ -1,199 +1,412 @@
 <!doctype html>
-<html lang="fr">
+<html lang="fr" data-theme="night" data-level="green">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-<meta name="theme-color" content="#455A64">
-<title>Taranis · Serveur autonome</title>
-<style>
-  :root { color-scheme: light; }
-  * { box-sizing: border-box; }
-  html, body { margin: 0; padding: 0; height: 100%; background: #ECEFF1;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-                             "Helvetica Neue", Arial, sans-serif; color: #212121; }
-  .app { max-width: 480px; margin: 0 auto; min-height: 100vh; position: relative;
-         padding: env(safe-area-inset-top, 0) 16px env(safe-area-inset-bottom, 0); }
-
-  header { padding: 20px 4px 8px; text-align: center; }
-  header h1 { margin: 0; font-size: 22px; letter-spacing: 4px; font-weight: 700;
-              color: #263238; }
-  header .subtitle { margin-top: 4px; font-size: 11px; color: #90A4AE; }
-
-  .live-badge { display: inline-block; margin: 4px 0 8px; padding: 3px 8px;
-                background: #E8F5E9; color: #137333; font-size: 10px;
-                border-radius: 999px; font-weight: 700; letter-spacing: 1px; }
-  .live-badge::before { content: "● "; color: #137333; }
-
-  select.station-picker { width: 100%; padding: 12px 14px; font-size: 15px;
-                          border-radius: 12px; border: 1px solid #CFD8DC;
-                          background: white url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'><path d='M0 0l6 8 6-8' fill='%23607D8B'/></svg>") no-repeat right 14px center;
-                          appearance: none; -webkit-appearance: none;
-                          color: #263238; }
-
-  .refresh { margin: 12px 0 6px; text-align: center; }
-  .refresh button { padding: 10px 22px; font-size: 13px; border: none;
-                     background: #263238; color: white; border-radius: 999px;
-                     font-weight: 600; letter-spacing: .5px; cursor: pointer; }
-  .refresh button:disabled { opacity: .5; cursor: wait; }
-
-  .screen { background: #fff; border-radius: 20px; padding: 22px 20px 22px;
-            box-shadow: 0 6px 22px rgba(0,0,0,.08); margin-top: 14px; }
-  .station { text-align: center; margin: 0 0 2px; font-size: 16px; color: #263238;
-             font-weight: 600; }
-  .region { text-align: center; margin: 0 0 4px; font-size: 11px; color: #78909C;
-            text-transform: uppercase; letter-spacing: 1px; }
-  .stamp { text-align: center; margin: 0 0 16px; font-size: 11px; color: #B0BEC5; }
-
-  .alert-banner { border-radius: 18px; padding: 18px 12px 16px; color: white;
-                   text-align: center; margin-bottom: 20px; }
-  .alert-title { font-size: 19px; font-weight: 800; letter-spacing: 1px; }
-  .alert-proba { margin-top: 6px; font-size: 13px; opacity: .95; }
-  .alert-seuil { margin-top: 2px; font-size: 10px; opacity: .8; }
-
-  .row { display: grid; grid-template-columns: 110px 1fr; align-items: center;
-         gap: 10px; padding: 10px 0; border-bottom: 1px dashed #ECEFF1; }
-  .row:last-child { border-bottom: none; }
-  .label { font-size: 11px; color: #78909C; }
-  .value { font-size: 15px; font-weight: 700; color: #212121; margin-top: 2px; }
-  .spark { width: 100%; height: 44px; }
-
-  .status { text-align: center; padding: 40px 20px; color: #78909C; font-size: 13px; }
-  .error { color: #B00020; }
-  .footer { text-align: center; font-size: 10px; color: #90A4AE; padding: 20px 20px 30px;
-            font-style: italic; }
-
-  @media (min-width: 640px) {
-    header h1 { font-size: 26px; }
-    .screen { padding: 26px 26px 24px; }
-  }
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0A0E15">
+  <meta name="description" content="Taranis, compagnon météo de montagne.">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="icon" type="image/png" href="./icons/icon-192.png">
+  <link rel="apple-touch-icon" href="./icons/icon-192.png">
+  <link rel="stylesheet" href="./css/app.css">
+  <title>Taranis · compagnon météo de montagne</title>
 </head>
 <body>
-<div class="app">
-  <header>
-    <h1>TARANIS</h1>
-    <div class="subtitle">Nowcasting orage · TS-JEPA + sonde WMO</div>
-    <div><span class="live-badge">LIVE</span></div>
-  </header>
+  <div class="app">
+    <svg class="isobars" viewBox="0 0 358 786" preserveAspectRatio="xMidYMid slice">
+      <g fill="none" stroke-width="1">
+        <path d="M-40 120 C60 80 120 180 220 130 S360 90 440 150"/>
+        <path d="M-40 190 C60 150 130 250 220 200 S360 160 440 220"/>
+        <path d="M-40 300 C80 250 140 360 240 300 S360 270 440 330"/>
+        <path d="M-40 430 C70 380 150 490 250 430 S370 400 450 460"/>
+        <path d="M-40 560 C80 510 150 620 250 560 S370 530 450 590"/>
+        <path d="M-40 680 C70 630 150 740 250 680 S370 650 450 710"/>
+      </g>
+    </svg>
 
-  <select class="station-picker" id="station">
-    <option value="07591">EMBRUN — Alpes du Sud (871 m)</option>
-    <option value="07471">LE PUY — Massif Central (833 m)</option>
-    <option value="07558">MILLAU — Causses (712 m)</option>
-    <option value="07481">LYON — Vallée du Rhône (235 m)</option>
-    <option value="07690">NICE — Côte d'Azur</option>
-    <option value="07747">PERPIGNAN — Roussillon</option>
-    <option value="07510">BORDEAUX — Aquitaine</option>
-    <option value="07110">BREST — Bretagne</option>
-    <option value="07037">ROUEN — Normandie</option>
-    <option value="07149">ORLY — Île-de-France</option>
-    <option value="07072">REIMS — Champagne</option>
-    <option value="07190">STRASBOURG — Alsace</option>
-    <option value="07761">AJACCIO — Corse-du-Sud</option>
-    <option value="07790">BASTIA — Haute-Corse</option>
-    <option value="07630">TOULOUSE — Sud-Ouest</option>
-    <option value="07299">BÂLE-MULHOUSE — Alsace</option>
-  </select>
-
-  <div class="refresh">
-    <button id="refresh">Actualiser la prédiction</button>
-  </div>
-
-  <div id="result">
-    <div class="status">Choisis une station et actualise pour lancer une prédiction live.</div>
-  </div>
-
-  <div class="footer">
-    Aide à la décision, pas une garantie.<br>
-    Ne remplace pas les bulletins officiels ni le jugement de l'utilisateur.<br>
-    En montagne, un faux négatif peut être mortel.
-  </div>
-</div>
-
-<script>
-  const select = document.getElementById('station');
-  const btn = document.getElementById('refresh');
-  const target = document.getElementById('result');
-
-  const CANAUX = [
-    { key: 'pressure', name: 'Pression', unit: 'hPa', color: '#1A73E8' },
-    { key: 'temp', name: 'Température', unit: '°C', color: '#B00020' },
-    { key: 'humidity', name: 'Humidité', unit: '%', color: '#137333' },
-    { key: 'wind_gust', name: 'Rafale 10 min', unit: 'm/s', color: '#E37400' },
-  ];
-
-  function sparkline(values, color, w = 280, h = 44, pad = 3) {
-    const lo = Math.min(...values), hi = Math.max(...values);
-    const span = Math.max(hi - lo, 1e-6);
-    const step = (w - 2 * pad) / Math.max(values.length - 1, 1);
-    const pts = values.map((v, i) => {
-      const x = pad + i * step;
-      const y = h - pad - (v - lo) / span * (h - 2 * pad);
-      return `${x.toFixed(1)},${y.toFixed(1)}`;
-    }).join(' ');
-    return `<svg viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg"
-                 preserveAspectRatio="none" width="100%" height="${h}">
-              <polyline points="${pts}" fill="none" stroke="${color}"
-                        stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/>
-            </svg>`;
-  }
-
-  async function refresh() {
-    const sid = select.value;
-    btn.disabled = true;
-    target.innerHTML = '<div class="status">Chargement des mesures et calcul de la prédiction…</div>';
-    try {
-      const r = await fetch(`/stations/${sid}/live?with_window=true`);
-      if (!r.ok) {
-        const detail = await r.json().catch(() => ({}));
-        throw new Error(detail.detail || `HTTP ${r.status}`);
-      }
-      const data = await r.json();
-      render(data);
-    } catch (e) {
-      target.innerHTML = `<div class="status error">Erreur : ${e.message}</div>`;
-    } finally {
-      btn.disabled = false;
-    }
-  }
-
-  function render(data) {
-    const p = data.prediction;
-    const win = data.window || {};
-    const stamp = new Date(data.derniere_mesure).toLocaleString('fr-FR', {
-      day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit'
-    });
-
-    let rows = '';
-    for (const c of CANAUX) {
-      const vals = win[c.key];
-      if (!vals || !vals.length) continue;
-      const cur = vals[vals.length - 1];
-      rows += `<div class="row">
-                <div><div class="label">${c.name}</div>
-                  <div class="value">${cur.toFixed(1)} ${c.unit}</div></div>
-                <div class="spark">${sparkline(vals, c.color)}</div>
-              </div>`;
-    }
-
-    target.innerHTML = `
-      <div class="screen">
-        <div class="station">${data.station_nom}</div>
-        <div class="region">altitude ${Math.round(data.altitude_m)} m</div>
-        <div class="stamp">${stamp} UTC</div>
-        <div class="alert-banner" style="background:${p.alerte_couleur}">
-          <div class="alert-title">${p.alerte_libelle.toUpperCase()}</div>
-          <div class="alert-proba">p(orage 24 h) = ${p.proba_orage.toFixed(2)}</div>
-          <div class="alert-seuil">(seuil de référence ${p.seuil_reference.toFixed(2)})</div>
-        </div>
-        ${rows}
+    <div class="topbar">
+      <span class="clock" id="clock">--:--</span>
+      <div class="right">
+        <span class="sensor-tag" id="sensor-tag"><span class="dot"></span>Open-Meteo</span>
+        <button id="cog" class="cog" data-i18n-aria="settings.title" title="Settings">⚙</button>
       </div>
-    `;
-  }
+    </div>
 
-  btn.addEventListener('click', refresh);
-  select.addEventListener('change', refresh);
-  refresh();  // premier chargement automatique
-</script>
+    <!-- HOME -->
+    <section class="screen active" id="screen-home">
+      <div class="screen-head">
+        <div>
+          <div class="place-kicker" id="place-name">Chamonix</div>
+          <div class="place-detail" id="place-detail">2340 m · 45.9°N</div>
+        </div>
+        <div class="head-right">
+          <span data-i18n="home.updated">Mis à jour</span><br>
+          <span id="home-updated">--:--</span>
+        </div>
+      </div>
+
+      <div class="vital-wrap">
+        <div class="vital-ring-container">
+          <span class="vital-halo"></span>
+          <svg class="vital-ring" width="236" height="236" viewBox="0 0 236 236">
+            <circle class="ring-bg" cx="118" cy="118" r="106" fill="none" stroke-width="10"/>
+            <circle id="ring-fg" class="ring-fg" cx="118" cy="118" r="106" fill="none" stroke-width="10"
+                    stroke-dasharray="666" stroke-dashoffset="66"/>
+          </svg>
+          <div class="vital-inner">
+            <div class="vital-glyph" id="vital-glyph"></div>
+            <div class="vital-status" id="vital-status">Serein</div>
+            <div class="vital-level-kicker" data-i18n="home.level_kicker">Niveau d'alerte</div>
+          </div>
+        </div>
+        <div class="vital-regime" id="vital-regime">Conditions stables</div>
+      </div>
+
+      <div id="preavis" class="preavis-card calm">
+        <span style="width:8px;height:8px;border-radius:50%;background:var(--sig);flex:none;"></span>
+        <div class="preavis-note" id="preavis-note">Pression stable.</div>
+      </div>
+    </section>
+
+    <!-- LIVE -->
+    <section class="screen" id="screen-live">
+      <div class="screen-head-row">
+        <div class="screen-title" data-i18n="live.title">Météo live</div>
+        <div class="screen-subtitle">
+          <span data-i18n="live.on_air">En direct</span> · <span id="live-clock">--:--</span>
+        </div>
+      </div>
+
+      <div class="hero-pressure">
+        <div class="row">
+          <div>
+            <div class="metric-kicker" data-i18n="live.pressure">Pression</div>
+            <div class="hero-value"><span class="big" id="press-val">—</span><span class="unit">hPa</span></div>
+          </div>
+          <div class="hero-trend">
+            <div class="metric-kicker" data-i18n="live.trend">Tendance</div>
+            <div>
+              <span class="arrow" id="press-arrow">→</span>
+              <span class="value" id="press-trend">—</span>
+            </div>
+            <div class="sub">hPa / 3 h</div>
+          </div>
+        </div>
+        <div class="chart-wrap" id="live-chart-wrap">
+          <svg class="hero-chart" id="live-chart" viewBox="0 0 320 118" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="area-grad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="currentColor" stop-opacity="0.28"/>
+                <stop offset="100%" stop-color="currentColor" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <line class="grid" x1="0" y1="30" x2="320" y2="30"/>
+            <line class="grid" x1="0" y1="74" x2="320" y2="74"/>
+            <polygon id="press-area" fill="url(#area-grad)" style="color: var(--sig)"/>
+            <polyline id="press-line" class="line"/>
+            <circle id="press-dot" class="last-dot" r="4.5"/>
+            <circle id="press-dot-pulse" class="last-pulse" r="4.5"/>
+            <line class="crosshair-line" id="live-crosshair-line" y1="0" y2="118"/>
+            <circle class="crosshair-dot" id="live-crosshair-dot" r="4"/>
+          </svg>
+          <div class="crosshair-tip" id="live-crosshair-tip">—</div>
+        </div>
+        <div class="hero-axis">
+          <span id="live-tick-0">--:--</span>
+          <span id="live-tick-1">--:--</span>
+          <span id="live-tick-2">--:--</span>
+        </div>
+        <div class="hero-note" id="hero-note">—</div>
+      </div>
+
+      <div class="group-header" id="sensor-group-header">
+        <div class="group-title" data-i18n="sensor_group.title">Capteur local</div>
+        <div class="group-sub" id="sensor-group-sub" data-i18n="sensor_group.hint">Mesuré</div>
+      </div>
+
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-kicker" data-i18n="live.temp">Température</div>
+          <div class="metric-value"><span class="big" id="temp-val">—</span><span class="unit">°C</span></div>
+          <div class="metric-sub" id="temp-sub">—</div>
+        </div>
+        <div class="metric">
+          <div class="metric-kicker" data-i18n="live.humidity">Humidité</div>
+          <div class="metric-value"><span class="big" id="hum-val">—</span><span class="unit">%</span></div>
+          <div class="metric-sub" id="hum-sub">—</div>
+        </div>
+      </div>
+
+      <div class="group-header" id="context-header" style="display:none">
+        <div class="group-title" data-i18n="context.title">Contexte régional</div>
+        <div class="group-sub" data-i18n="context.subtitle">Open-Meteo</div>
+      </div>
+
+      <div class="context-panel" id="context-panel" style="display:none">
+        <div class="context-row">
+          <div class="context-kv">
+            <div class="k" data-i18n="context.wind">Vent</div>
+            <div class="v"><span id="ctx-wind">—</span><span class="unit"> km/h</span></div>
+          </div>
+          <div class="context-kv">
+            <div class="k" data-i18n="context.gusts">Rafales</div>
+            <div class="v"><span id="ctx-gusts">—</span><span class="unit"> km/h</span></div>
+          </div>
+        </div>
+        <div class="context-row">
+          <div class="context-kv">
+            <div class="k" data-i18n="context.precip_next6h">Pluie prévue 6 h</div>
+            <div class="v"><span id="ctx-precip">—</span><span class="unit"> mm</span></div>
+          </div>
+          <div class="context-kv">
+            <div class="k" data-i18n="context.pop_peak">Probabilité de pluie</div>
+            <div class="v"><span id="ctx-pop">—</span><span class="unit"> %</span></div>
+          </div>
+        </div>
+        <div class="context-row">
+          <div class="context-kv">
+            <div class="k" data-i18n="context.cape_peak">Instabilité CAPE</div>
+            <div class="v"><span id="ctx-cape">—</span><span class="unit"> J/kg</span></div>
+          </div>
+          <div class="context-kv">
+            <div class="k" id="ctx-verdict-k" data-i18n="context.no_storm">Rien</div>
+            <div class="v" id="ctx-verdict-v" style="color:var(--green);font-weight:600">✓</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- HISTORY -->
+    <section class="screen" id="screen-history">
+      <div class="hist-title" data-i18n="history.title">Historique</div>
+      <div class="hist-sub" data-i18n="history.subtitle">Les dernières heures.</div>
+
+      <div class="hist-card">
+        <div class="head">
+          <div class="metric-kicker" data-i18n="history.last6h">6 dernières heures</div>
+          <div class="metric-kicker" style="color:var(--faint)">hPa</div>
+        </div>
+        <div class="chart-wrap" id="hist-chart-wrap">
+          <svg class="hist-chart" id="hist-chart" viewBox="0 0 320 130" preserveAspectRatio="none">
+            <line class="grid" x1="0" y1="36" x2="320" y2="36"/>
+            <line class="grid" x1="0" y1="86" x2="320" y2="86"/>
+            <g id="hist-segments"></g>
+            <line class="crosshair-line" id="hist-crosshair-line" y1="0" y2="130"/>
+            <circle class="crosshair-dot" id="hist-crosshair-dot" r="4"/>
+          </svg>
+          <div class="crosshair-tip" id="hist-crosshair-tip">—</div>
+        </div>
+        <div class="hist-axis">
+          <span id="hist-tick-0">--:--</span>
+          <span id="hist-tick-1">--:--</span>
+          <span id="hist-tick-2">--:--</span>
+        </div>
+      </div>
+
+      <div class="events-kicker" data-i18n="history.events">Événements</div>
+      <div id="events"></div>
+
+      <div class="hist-note">
+        <span style="flex:none;color:var(--dim)">ⓘ</span>
+        <div data-i18n="history.note">Taranis n'a pas prédit un orage.</div>
+      </div>
+    </section>
+
+    <!-- SENSOR -->
+    <section class="screen" id="screen-sensor">
+      <div class="pair-title" data-i18n="sensor.title">Capteur Taranis</div>
+      <div class="pair-sub" data-i18n="sensor.subtitle">Reliez votre capteur BLE.</div>
+
+      <div class="pair-wrap">
+        <div class="pair-ring">
+          <span id="pair-halo-1" class="pair-halo"></span>
+          <span id="pair-halo-2" class="pair-halo delay"></span>
+          <div id="pair-icon" class="pair-icon">
+            <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M7 8 L17 16 L12 20 L12 4 L17 8 L7 16"/>
+            </svg>
+          </div>
+        </div>
+        <div class="pair-headline" id="pair-headline" data-i18n="sensor.none">Aucun capteur couplé</div>
+        <div class="pair-headline-sub" id="pair-headline-sub" data-i18n="sensor.hint">—</div>
+
+        <div id="pair-stats" class="pair-stats" style="display:none">
+          <div class="pair-stat">
+            <div class="kicker" data-i18n="sensor.battery">Batterie</div>
+            <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+              <div class="battery-bar"><span id="battery-level" style="width:78%"></span></div>
+              <span class="val" id="battery-val">78%</span>
+            </div>
+          </div>
+          <div class="pair-stat">
+            <div class="kicker" data-i18n="sensor.signal">Signal</div>
+            <div style="display:flex;align-items:flex-end;gap:3px;margin-top:8px;height:16px">
+              <span style="width:5px;background:var(--green);height:40%;border-radius:1px"></span>
+              <span style="width:5px;background:var(--green);height:65%;border-radius:1px"></span>
+              <span style="width:5px;background:var(--green);height:85%;border-radius:1px"></span>
+              <span style="width:5px;background:var(--green);height:100%;border-radius:1px"></span>
+              <span class="val" style="margin-left:6px" id="rssi-val">-58 dBm</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <button id="pair-btn" class="pair-btn" data-taranis-pair data-i18n="sensor.button">Coupler</button>
+      <div id="ios-notice" style="display:none"></div>
+    </section>
+
+    <!-- BOTTOM NAV -->
+    <div class="nav">
+      <button id="nav-home" class="active" data-screen="home">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round"><path d="M3 18 L9 7 L13 13 L16 8 L21 18 Z"/></svg>
+        <span data-i18n="nav.home">Accueil</span>
+      </button>
+      <button id="nav-live" data-screen="live">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 3 A9 9 0 1 0 21 12"/><path d="M12 12 L17 8"/>
+          <circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/>
+        </svg>
+        <span data-i18n="nav.live">Live</span>
+      </button>
+      <button id="nav-history" data-screen="history">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round"><path d="M3 14 C6 14 6 8 9 8 S12 15 15 15 S18 6 21 6"/></svg>
+        <span data-i18n="nav.history">Historique</span>
+      </button>
+      <button id="nav-sensor" data-screen="sensor">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round"><path d="M7 8 L17 16 L12 20 L12 4 L17 8 L7 16"/></svg>
+        <span data-i18n="nav.sensor">Capteur</span>
+      </button>
+    </div>
+
+    <!-- ALERT OVERLAY -->
+    <div id="alert-overlay" class="alert-overlay" role="alert" aria-live="assertive">
+      <div class="fx">
+        <div class="fx-flash"></div>
+        <svg class="fx-bolt" width="200" height="360" viewBox="0 0 200 360">
+          <path d="M120 20 L70 150 L110 150 L60 340"/>
+        </svg>
+      </div>
+      <div class="alert-kicker">
+        <span class="flag"></span>
+        <span data-i18n="alert.kicker">Alerte Taranis</span>
+      </div>
+      <div class="alert-title" data-i18n="alert.title">ORAGE IMMINENT</div>
+      <div class="alert-metrics">
+        <div class="alert-metric">
+          <div class="kicker" data-i18n="alert.eta">Impact estimé</div>
+          <div class="val eta"><span id="alert-eta">~—</span><span class="unit"> min</span></div>
+        </div>
+        <div class="alert-metric">
+          <div class="kicker" data-i18n="alert.drop">Chute pression</div>
+          <div class="val drop"><span id="alert-drop">—</span><span class="unit"> hPa/h</span></div>
+        </div>
+      </div>
+      <div class="alert-action-box">
+        <div class="kicker" data-i18n="alert.do">À faire maintenant</div>
+        <p data-i18n="alert.do_text">Descendez sous la ligne de crête.</p>
+      </div>
+      <button id="alert-ack" class="alert-ack" data-i18n="alert.ack">J'ai compris</button>
+      <div class="alert-disclaimer" data-i18n="alert.disclaimer">Disclaimer.</div>
+    </div>
+  </div>
+
+  <!-- SETTINGS DRAWER -->
+  <div id="drawer-backdrop" class="drawer-backdrop"></div>
+  <div id="drawer" class="drawer" role="dialog" aria-label="Réglages">
+    <div class="grip"></div>
+    <h2 data-i18n="settings.title">Réglages</h2>
+
+    <div class="row">
+      <div>
+        <div class="name" data-i18n="settings.language">Langue</div>
+        <div class="help" data-i18n="settings.language.help">—</div>
+      </div>
+      <select id="opt-lang">
+        <option value="fr">Français</option>
+        <option value="en">English</option>
+        <option value="es">Español</option>
+        <option value="it">Italiano</option>
+        <option value="de">Deutsch</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <div>
+        <div class="name" data-i18n="settings.engine">Moteur de prédiction</div>
+        <div class="help" data-i18n="settings.engine.help">—</div>
+      </div>
+      <select id="opt-engine" data-taranis-engine>
+        <option value="hgb" data-i18n="settings.engine.hgb">HGB</option>
+        <option value="jepa" data-i18n="settings.engine.jepa">TS-JEPA</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <div>
+        <div class="name" data-i18n="settings.theme">Mode nuit / jour</div>
+        <div class="help" data-i18n="settings.theme.help">—</div>
+      </div>
+      <select id="opt-theme">
+        <option value="night" data-i18n="settings.theme.night">Nuit</option>
+        <option value="day" data-i18n="settings.theme.day">Jour</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <div>
+        <div class="name" data-i18n="settings.source">Source des données</div>
+        <div class="help" data-i18n="settings.source.help">—</div>
+      </div>
+      <select id="opt-source" data-taranis-source>
+        <option value="openmeteo" data-i18n="settings.source.openmeteo">Open-Meteo</option>
+        <option value="sensor" disabled data-i18n="settings.source.sensor">Capteur BLE</option>
+        <option value="mock" data-i18n="settings.source.mock">Mock</option>
+      </select>
+    </div>
+
+    <div class="row">
+      <div>
+        <div class="name" data-i18n="settings.meteo">Météo contexte</div>
+        <div class="help" data-i18n="settings.meteo.help">—</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="opt-meteo" data-taranis-meteo>
+        <span class="slider"></span>
+      </label>
+    </div>
+
+    <div class="row">
+      <div>
+        <div class="name" data-i18n="settings.location">Position</div>
+        <div class="help" id="loc-help">—</div>
+      </div>
+      <button id="opt-geoloc" class="btn" data-taranis-geoloc data-i18n="settings.location.locate">Localiser</button>
+    </div>
+
+    <div class="row">
+      <div>
+        <div class="name" data-i18n="settings.clear">Vider le buffer</div>
+        <div class="help" data-i18n="settings.clear.help">—</div>
+      </div>
+      <button id="opt-clear" class="btn" data-taranis-clear data-i18n="settings.clear.btn">Vider</button>
+    </div>
+
+    <div class="row">
+      <div>
+        <div class="name" data-i18n="settings.reload">Recharger l'app</div>
+        <div class="help" data-i18n="settings.reload.help">—</div>
+      </div>
+      <button id="opt-reload" class="btn" data-i18n="settings.reload.btn">Recharger</button>
+    </div>
+
+    <button id="drawer-close" class="cta" data-i18n="settings.close">FERMER</button>
+  </div>
+
+  <script type="module" src="./js/app.js"></script>
 </body>
 </html>

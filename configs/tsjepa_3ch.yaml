@@ -1,0 +1,44 @@
+# TS-JEPA on the 3-channel sensor dataset (pressure, temp, humidity).
+# Chapter 18: does JEPA still add value when the input is reduced to
+# what a portable BLE sensor (RuuviTag Pro) can measure?
+#
+# Same architecture and training budget as tsjepa_real_full_rich, only
+# n_canaux changes. Everything else is held constant to make the
+# comparison against HGB-3ch fair.
+
+dataset: data/real_combined_3ch_windows.npz
+
+model:
+  Tw: 32
+  n_canaux: 3
+  patch_len: 4
+  d_model: 64
+  n_layers_encoder: 3
+  n_layers_predictor: 2
+  n_heads: 4
+  mlp_ratio: 2.0
+  tau_ema: 0.996
+
+trainer:
+  n_steps: 4000
+  batch_size: 128
+  val_every: 200
+  val_batches: 4
+  log_every: 200
+
+  lr_max: 1.0e-3
+  lr_min: 1.0e-5
+  warmup_steps: 200
+  weight_decay: 1.0e-4
+  grad_clip: 1.0
+
+  tau_start: 0.996
+  tau_end: 0.999
+
+  n_blocks: 2
+  block_size: 2
+
+  seed: 0
+  device: cpu
+
+output: runs/tsjepa_3ch

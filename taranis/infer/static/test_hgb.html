@@ -1,0 +1,100 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Taranis PWA · test parité HGB</title>
+<style>
+  body { font-family: -apple-system, "Segoe UI", Roboto, sans-serif;
+         max-width: 720px; margin: 32px auto; padding: 0 16px; color: #263238; }
+  h1 { font-size: 20px; letter-spacing: 2px; }
+  table { border-collapse: collapse; width: 100%; margin: 20px 0; }
+  th, td { border: 1px solid #CFD8DC; padding: 8px 10px; text-align: right; }
+  th:first-child, td:first-child { text-align: left; }
+  th { background: #ECEFF1; }
+  .ok { color: #137333; font-weight: 700; }
+  .ko { color: #B00020; font-weight: 700; }
+  .status { padding: 12px; border-radius: 8px; margin: 12px 0; }
+  .status.ok { background: #E8F5E9; }
+  .status.ko { background: #FBE9E7; }
+  code { background: #ECEFF1; padding: 2px 6px; border-radius: 4px; }
+</style>
+</head>
+<body>
+<h1>TARANIS · test parité HGB navigateur ↔ Python</h1>
+<p>Cette page charge <code>models/hgb_3ch.json</code>, calcule les features
+sur 5 fenêtres témoin, prédit une probabilité d'orage et compare aux
+valeurs Python de référence. Un écart > 1e-6 signale un bug de portage.</p>
+
+<div id="result">Chargement du modèle...</div>
+
+<script type="module">
+import { buildFeatures3ch } from "./js/features.js";
+import { predictHGB, alertFromProba } from "./js/hgb_eval.js";
+
+const EXPECTED_PROBS = [
+    0.5690484034481972,
+    0.4922003219462329,
+    0.3632262648956853,
+    0.3947839504137553,
+    0.3923577094070101,
+];
+
+async function run() {
+    const [bundle, sample] = await Promise.all([
+        fetch("./models/hgb_3ch.json").then(r => r.json()),
+        fetch("./models/test_sample.json").then(r => r.json()),
+    ]);
+
+    const windows = sample.windows;  // 5 x 32 x 3
+    const rows = [];
+    let maxDiff = 0;
+    for (let i = 0; i < windows.length; i++) {
+        const features = buildFeatures3ch(windows[i]);
+        const proba = predictHGB(bundle, features);
+        const level = alertFromProba(bundle, proba);
+        const expected = EXPECTED_PROBS[i];
+        const diff = Math.abs(proba - expected);
+        maxDiff = Math.max(maxDiff, diff);
+        rows.push({ i, proba, expected, diff, level });
+    }
+
+    const dst = document.getElementById("result");
+    const ok = maxDiff < 1e-6;
+    const status = ok
+        ? `<div class="status ok">✅ Parité machine, écart max = ${maxDiff.toExponential(2)}. Le pipeline JS est fidèle à Python.</div>`
+        : `<div class="status ko">⚠️ Écart max = ${maxDiff.toExponential(2)}, > 1e-6, à investiguer avant d'aller plus loin.</div>`;
+    const table = `
+      <table>
+        <thead><tr>
+          <th>Fenêtre</th>
+          <th>Prob JS</th>
+          <th>Prob Python</th>
+          <th>Écart</th>
+          <th>Alerte</th>
+        </tr></thead>
+        <tbody>
+          ${rows.map(r => `
+            <tr>
+              <td>#${r.i}</td>
+              <td>${r.proba.toFixed(8)}</td>
+              <td>${r.expected.toFixed(8)}</td>
+              <td>${r.diff.toExponential(2)}</td>
+              <td>${r.level}</td>
+            </tr>`).join("")}
+        </tbody>
+      </table>
+      <p>Modèle : <b>${bundle.model}</b>, AUC test = ${bundle.auc_test.toFixed(4)},
+      seuils ORANGE = ${bundle.orange_threshold.toFixed(4)},
+      ROUGE = ${bundle.rouge_threshold.toFixed(4)}.</p>
+      <p>Arbres : ${bundle.trees.length}, features : ${bundle.features.length}.</p>`;
+    dst.innerHTML = status + table;
+}
+
+run().catch(err => {
+    document.getElementById("result").innerHTML =
+        `<div class="status ko">Erreur : ${err.message}</div>`;
+    console.error(err);
+});
+</script>
+</body>
+</html>
