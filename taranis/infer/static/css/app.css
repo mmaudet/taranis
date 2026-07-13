@@ -171,6 +171,16 @@ a { color: inherit; text-decoration: none; }
   text-transform: uppercase;
   color: var(--faint);
 }
+.screen-head {
+  gap: 12px;
+}
+.screen-head > div:first-child { min-width: 0; flex: 1; }
+.screen-head .place-kicker,
+.screen-head .place-detail {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .screen-head .place-detail {
   font-family: "Space Grotesk", sans-serif;
   font-size: 15px;
@@ -178,6 +188,7 @@ a { color: inherit; text-decoration: none; }
   color: var(--dim);
   margin-top: 3px;
 }
+.screen-head .head-right { flex: 0 0 auto; }
 .screen-head .head-right {
   font-family: "IBM Plex Mono", monospace;
   font-size: 10.5px;

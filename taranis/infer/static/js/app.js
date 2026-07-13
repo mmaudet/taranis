@@ -176,7 +176,7 @@ function updateLocationLabel() {
     if (loc.lat && loc.lon && (loc.label && loc.label.match(/\d/))) {
         const altText = loc.altitude ? `${Math.round(loc.altitude)} m · ${loc.label}` : loc.label;
         $("#loc-help").textContent = altText;
-        $("#place-name").textContent = t("home.default_place");
+        $("#place-name").textContent = t("home.gps_position");
         $("#place-detail").textContent = altText;
     } else {
         const label = (loc.label || t("home.default_place"));
