@@ -730,14 +730,20 @@ async function boot() {
                      "hist-crosshair-line", "hist-crosshair-dot", 130);
 
     // Version indicator: fetch the served sw.js CACHE_VERSION and show it
-    // in the settings drawer so the user can visually confirm at a glance
-    // whether the phone is on the freshly deployed code.
+    // both in the settings drawer footer AND in the top bar so a
+    // phone-only user can see at a glance whether they are running the
+    // freshly deployed code.
     (async () => {
         try {
             const r = await fetch("./sw.js", { cache: "no-cache" });
             const text = await r.text();
             const m = text.match(/CACHE_VERSION\s*=\s*"([^"]+)"/);
-            if (m) $("#app-version").textContent = m[1];
+            if (m) {
+                $("#app-version").textContent = m[1];
+                // Shorten HHMMSS or version tail for the topbar chip
+                const short = m[1].replace(/^taranis-/, "").slice(0, 16);
+                $("#build-badge").textContent = short;
+            }
         } catch (_) { /* silent */ }
     })();
 
