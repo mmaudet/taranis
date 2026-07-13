@@ -54,6 +54,7 @@ nav:
   - "Étape 12, le serveur autonome": 12-serveur-autonome.md
   - "Étape 13, journal honnête de calibration": 13-journal-calibration.md
   - "Étape 14, la physique du modèle": 14-physique-modele.md
+  - "Étape 15, évaluation rigoureuse": 15-evaluation-rigoureuse.md
 
 markdown_extensions:
   - admonition
