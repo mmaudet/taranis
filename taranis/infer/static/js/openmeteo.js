@@ -11,16 +11,28 @@
 const OM_URL = "https://api.open-meteo.com/v1/forecast";
 
 // Fetch past + present hourly data suitable for filling the 96 h buffer.
+//
+// Pressure channel: we use `pressure_msl` (mean sea level) instead of
+// `surface_pressure`. Rationale: the model was trained on French SYNOP
+// which mixes stations at very different altitudes (Chamonix at ~1000 m
+// pressure hovers around 890 hPa; coastal Nice at sea level 1013 hPa).
+// LOO analysis (chapter 18) already flagged that altitude-based drift
+// hurts generalization. When a user moves by a few kilometres and
+// crosses different grid-point elevations, surface_pressure can jump
+// 20-30 hPa purely from geography; the model then reads that as
+// "pressure crashing = imminent storm" and cries wolf. Feeding it MSL
+// removes the topographic offset so the trend + trend-derived features
+// carry the actual synoptic signal.
 export async function fetchOpenMeteoBackfill(lat, lon, pastHours = 100) {
     const url = `${OM_URL}?latitude=${lat}&longitude=${lon}`
-        + `&hourly=surface_pressure,temperature_2m,relative_humidity_2m`
+        + `&hourly=pressure_msl,temperature_2m,relative_humidity_2m`
         + `&past_hours=${pastHours}&forecast_hours=1&timezone=UTC`;
     const r = await fetch(url);
     if (!r.ok) throw new Error(`Open-Meteo indisponible (${r.status})`);
     const data = await r.json();
 
     const times = data.hourly.time;
-    const p = data.hourly.surface_pressure;
+    const p = data.hourly.pressure_msl;
     const t = data.hourly.temperature_2m;
     const h = data.hourly.relative_humidity_2m;
 
@@ -43,7 +55,7 @@ export async function fetchOpenMeteoBackfill(lat, lon, pastHours = 100) {
 // storm indicators).
 export async function fetchOpenMeteoContext(lat, lon) {
     const url = `${OM_URL}?latitude=${lat}&longitude=${lon}`
-        + `&current=temperature_2m,relative_humidity_2m,surface_pressure,wind_speed_10m,wind_gusts_10m,precipitation,wind_direction_10m`
+        + `&current=temperature_2m,relative_humidity_2m,pressure_msl,wind_speed_10m,wind_gusts_10m,precipitation,wind_direction_10m`
         + `&hourly=precipitation_probability,precipitation,cape,wind_speed_10m,wind_gusts_10m`
         + `&forecast_hours=12&timezone=UTC`;
     const r = await fetch(url);
@@ -61,7 +73,7 @@ export async function fetchOpenMeteoContext(lat, lon) {
     return {
         temp: cur.temperature_2m,
         humidity: cur.relative_humidity_2m,
-        pressure: cur.surface_pressure,
+        pressure: cur.pressure_msl,
         windKmh: cur.wind_speed_10m,
         windDegrees: cur.wind_direction_10m,
         gustKmh: cur.wind_gusts_10m,
