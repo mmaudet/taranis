@@ -9,7 +9,7 @@ import { loadSettings, saveSettings } from "./settings.js";
 import { readAll, buildWindow, clearAll, trimBuffer } from "./buffer.js";
 import { seedMockBuffer, startMockLive, stopMockLive } from "./mock.js";
 import { pairRuuvi, isWebBluetoothAvailable, isIOS } from "./ble.js";
-import { requestGeolocation, formatLocation } from "./geoloc.js";
+import { requestGeolocation, formatLocation, reverseGeocode } from "./geoloc.js";
 import { fetchOpenMeteoBackfill, fetchOpenMeteoContext } from "./openmeteo.js";
 import { pushSample } from "./buffer.js";
 import {
@@ -173,11 +173,16 @@ async function refreshContextPanel() {
 
 function updateLocationLabel() {
     const loc = STATE.settings.location || {};
-    if (loc.lat && loc.lon && (loc.label && loc.label.match(/\d/))) {
-        const altText = loc.altitude ? `${Math.round(loc.altitude)} m · ${loc.label}` : loc.label;
-        $("#loc-help").textContent = altText;
-        $("#place-name").textContent = t("home.gps_position");
-        $("#place-detail").textContent = altText;
+    const hasGps = loc.lat && loc.lon && loc.label && loc.label.match(/\d/);
+    if (hasGps) {
+        const altPart = loc.altitude ? `${Math.round(loc.altitude)} m · ` : "";
+        const detail = `${altPart}${loc.label}`;
+        // Locality name via reverse geocoding when available, else the
+        // neutral "GPS position" translation. Coordinates always shown
+        // as the second line so the user can verify.
+        $("#place-name").textContent = loc.name || t("home.gps_position");
+        $("#place-detail").textContent = detail;
+        $("#loc-help").textContent = loc.name ? `${loc.name} · ${detail}` : detail;
     } else {
         const label = (loc.label || t("home.default_place"));
         const lat = (loc.lat || 45.9).toFixed(2);
@@ -629,18 +634,21 @@ async function setupDrawer() {
         try {
             const pos = await requestGeolocation();
             const label = formatLocation(pos.lat, pos.lon);
-            const altText = pos.altitude ? `${Math.round(pos.altitude)} m · ${label}` : label;
+            let name = null;
+            try {
+                const rev = await reverseGeocode(pos.lat, pos.lon, STATE.settings.language || "en");
+                name = rev.name;
+            } catch (_) { /* fallback to raw coordinates */ }
             STATE.settings = saveSettings({
                 location: {
                     lat: pos.lat,
                     lon: pos.lon,
                     label: label,
+                    name: name,
                     altitude: pos.altitude || null,
                 },
             });
-            $("#loc-help").textContent = altText;
-            $("#place-name").textContent = t("home.gps_position");
-            $("#place-detail").textContent = altText;
+            updateLocationLabel();
             toast(`${t("toast.position_ok")} (±${Math.round(pos.accuracy)} m)`);
         } catch (e) {
             toast(e.message);
