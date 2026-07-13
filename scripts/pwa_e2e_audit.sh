@@ -31,8 +31,12 @@ LOC_HTML=$STATIC/index.html
 LOC_I18N=$STATIC/js/i18n.js
 LOC_SW=$STATIC/sw.js
 
-check "app.js: home.gps_position at both sites" \
-    bash -c "test \$(grep -c 'home.gps_position' $LOC_APP) -eq 2"
+check "app.js: uses home.gps_position fallback for GPS labels" \
+    bash -c "grep -q 'home.gps_position' $LOC_APP"
+check "app.js: uses reverseGeocode for locality name" \
+    bash -c "grep -q 'reverseGeocode' $LOC_APP"
+check "app.js: renders loc.name when available" \
+    bash -c "grep -q 'loc.name' $LOC_APP"
 check "app.js: no #place-name -> home.default_place" \
     bash -c "! grep '#place-name.*home.default_place' $LOC_APP"
 check "app.js: installCrosshair uses overlay id" \
@@ -79,8 +83,10 @@ served_i18n=$(body js/i18n.js)
 served_index=$(body index.html)
 served_css=$(body css/app.css)
 
-check "served app.js has home.gps_position x2" \
-    bash -c "echo \"\$1\" | grep -c 'home.gps_position' | grep -q '^2$'" _ "$served_app"
+check "served app.js has home.gps_position fallback" \
+    bash -c "echo \"\$1\" | grep -q 'home.gps_position'" _ "$served_app"
+check "served app.js has reverseGeocode import" \
+    bash -c "echo \"\$1\" | grep -q 'reverseGeocode'" _ "$served_app"
 check "served app.js has no #place-name -> default_place" \
     bash -c "! echo \"\$1\" | grep -q '#place-name.*home.default_place'" _ "$served_app"
 check "served app.js has installCrosshair" \
