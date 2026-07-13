@@ -2,7 +2,7 @@
 // Cache-first strategy so the PWA works with zero connectivity once installed.
 // Open-Meteo requests are never cached (opt-in live weather only).
 
-const CACHE_VERSION = "taranis-20260713-194400";
+const CACHE_VERSION = "taranis-20260713-194703";
 const SHELL = [
   "./",
   "./index.html",
