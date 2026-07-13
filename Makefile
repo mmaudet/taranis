@@ -29,8 +29,18 @@ caddy-reload:
 	@cd $(BLOG_DIR) && docker compose exec caddy caddy reload \
 	    --config /etc/caddy/Caddyfile 2>&1 | tail -3
 
-deploy: bump-sw caddy-reload
-	@echo "✓ SW bumped, Caddy reloaded. taranis.maudet.cloud serves fresh files."
+# Full container restart is required when Caddyfile is edited in place
+# because Docker bind mounts pin to the file's inode; an editor doing
+# write-and-rename swaps the inode and the container keeps serving the
+# stale config until the container is recreated.
+caddy-restart:
+	@cd $(BLOG_DIR) && docker compose restart caddy 2>&1 | tail -3
+
+deploy: bump-sw caddy-restart
+	@echo "✓ SW bumped, Caddy restarted. taranis.maudet.cloud serves fresh files."
+
+audit:
+	@bash scripts/pwa_e2e_audit.sh
 
 verify:
 	@echo "== HTTPS via Host header (bypasses DNS mismatch) =="

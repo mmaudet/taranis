@@ -356,8 +356,6 @@ a { color: inherit; text-decoration: none; }
   border-radius: 20px;
   padding: 18px 18px 8px;
   position: relative;
-  /* No overflow:hidden here: the crosshair tooltip lives above the chart
-     and must not be clipped by the card. */
 }
 .hero-pressure .row {
   display: flex;
