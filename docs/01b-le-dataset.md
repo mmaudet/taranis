@@ -113,9 +113,9 @@ uv run python scripts/render_dataset_figures.py
 
 Après ces deux commandes, on a :
 
-- `data/synthetic_raw.csv` — la série brute (~5 Mo, non versionnée)
-- `data/synthetic_windows.npz` — les fenêtres prêtes à l'emploi (~1.6 Mo, non versionnée)
-- `docs/assets/step1b_*.png` — les figures descriptives
+- `data/synthetic_raw.csv` : la série brute (~5 Mo, non versionnée)
+- `data/synthetic_windows.npz` : les fenêtres prêtes à l'emploi (~1.6 Mo, non versionnée)
+- `docs/assets/step1b_*.png` : les figures descriptives
 
 ## Ce qu'il faut retenir avant l'étape 2
 

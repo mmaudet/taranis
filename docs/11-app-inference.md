@@ -33,7 +33,7 @@ Deux choix à défendre :
 
 ## L'API en trois endpoints
 
-**`GET /health`** — sanity check et description du modèle chargé.
+**`GET /health`** : sanity check et description du modèle chargé.
 
 ```json
 {
@@ -45,7 +45,7 @@ Deux choix à défendre :
 }
 ```
 
-**`POST /predict`** — le contrat central. Payload : une fenêtre en **unités physiques** (pas normalisée, c'est plus lisible côté client).
+**`POST /predict`** : le contrat central. Payload : une fenêtre en **unités physiques** (pas normalisée, c'est plus lisible côté client).
 
 ```json
 {
@@ -68,7 +68,7 @@ Réponse :
 }
 ```
 
-**`GET /stations/{id}/live`** — récupère les mesures SYNOP fraîches pour la station, calcule une prédiction en un aller-retour, prêt pour le front. C'est ce que ferait un capteur portable en poussant ses lectures dans le cloud, mais avec des données publiques.
+**`GET /stations/{id}/live`** : récupère les mesures SYNOP fraîches pour la station, calcule une prédiction en un aller-retour, prêt pour le front. C'est ce que ferait un capteur portable en poussant ses lectures dans le cloud, mais avec des données publiques.
 
 ## Un vrai cas d'orage, capté par l'API
 
