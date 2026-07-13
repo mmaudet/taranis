@@ -650,6 +650,15 @@ async function setupDrawer() {
             });
             updateLocationLabel();
             toast(`${t("toast.position_ok")} (±${Math.round(pos.accuracy)} m)`);
+            // Location change invalidates any buffer built for the previous
+            // location.  Re-fetch Open-Meteo backfill so the prediction
+            // reflects where the user actually is, not the default (Chamonix)
+            // or the previous fix.
+            if (STATE.settings.dataSource === "openmeteo") {
+                await activateDataSource("openmeteo", false);
+                tick();
+                refreshContextPanel();
+            }
         } catch (e) {
             toast(e.message);
         } finally {
