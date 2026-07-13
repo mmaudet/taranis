@@ -16,6 +16,7 @@ const STRINGS = {
         "home.updated": "Mis à jour",
         "home.pending": "en attente",
         "home.default_place": "Chamonix",
+        "home.gps_position": "Position GPS",
 
         "live.title": "Météo live",
         "live.on_air": "En direct",
@@ -144,6 +145,7 @@ const STRINGS = {
         "home.updated": "Updated",
         "home.pending": "waiting",
         "home.default_place": "Chamonix",
+        "home.gps_position": "GPS position",
 
         "live.title": "Live weather",
         "live.on_air": "Live",
@@ -272,6 +274,7 @@ const STRINGS = {
         "home.updated": "Actualizado",
         "home.pending": "esperando",
         "home.default_place": "Chamonix",
+        "home.gps_position": "Posición GPS",
 
         "live.title": "Meteo en vivo",
         "live.on_air": "En directo",
@@ -400,6 +403,7 @@ const STRINGS = {
         "home.updated": "Aggiornato",
         "home.pending": "in attesa",
         "home.default_place": "Chamonix",
+        "home.gps_position": "Posizione GPS",
 
         "live.title": "Meteo live",
         "live.on_air": "In diretta",
@@ -528,6 +532,7 @@ const STRINGS = {
         "home.updated": "Aktualisiert",
         "home.pending": "wartet",
         "home.default_place": "Chamonix",
+        "home.gps_position": "GPS-Position",
 
         "live.title": "Live-Wetter",
         "live.on_air": "Live",

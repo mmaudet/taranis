@@ -446,22 +446,22 @@ async function tick() {
     maybeShowAlert(proba, samples);
 }
 
-function installCrosshair(key, wrapId, chartSel, tipId, lineId, dotId, vbHeight) {
+function installCrosshair(key, wrapId, overlayId, tipId, lineId, dotId, vbHeight) {
     const wrap = document.getElementById(wrapId);
-    const chart = wrap.querySelector(chartSel);
+    const overlay = document.getElementById(overlayId);
     const tip = document.getElementById(tipId);
     const line = document.getElementById(lineId);
     const dot = document.getElementById(dotId);
-    if (!wrap || !chart || !tip || !line) return;
+    if (!wrap || !overlay || !tip || !line || !dot) return;
 
     function place(clientX) {
-        const rect = chart.getBoundingClientRect();
+        const rect = overlay.getBoundingClientRect();
         const xClient = clientX - rect.left;
-        if (xClient < 0 || xClient > rect.width) return hide();
+        if (rect.width <= 0) return;
+        const clampedX = Math.max(0, Math.min(rect.width, xClient));
         const pts = STATE.chartPts[key];
         if (!pts || pts.length === 0) return hide();
-        // Find nearest point by client x -> SVG viewBox x (320-wide)
-        const vbX = (xClient / rect.width) * 320;
+        const vbX = (clampedX / rect.width) * 320;
         let best = pts[0];
         let bestDist = Math.abs(pts[0].x - vbX);
         for (let i = 1; i < pts.length; i++) {
@@ -475,27 +475,52 @@ function installCrosshair(key, wrapId, chartSel, tipId, lineId, dotId, vbHeight)
         dot.setAttribute("cy", best.y);
         const time = formatClock(new Date(best.t));
         tip.textContent = `${time} · ${best.p.toFixed(1)} hPa`;
-        tip.style.left = xClient + "px";
-        tip.style.top = "4px";
+        // Clamp tip to stay inside the overlay horizontally.
+        const bestClient = (best.x / 320) * rect.width;
+        const half = tip.offsetWidth / 2 || 60;
+        const leftPx = Math.max(half, Math.min(rect.width - half, bestClient));
+        tip.style.left = leftPx + "px";
         wrap.classList.add("active");
     }
 
     function hide() { wrap.classList.remove("active"); }
 
-    // Pointer events cover mouse + touch on modern browsers.
-    chart.addEventListener("pointerdown", (e) => {
-        chart.setPointerCapture(e.pointerId);
+    let active = false;
+    function down(e) {
+        active = true;
+        try { overlay.setPointerCapture(e.pointerId); } catch (_) { /* not fatal */ }
         place(e.clientX);
-    });
-    chart.addEventListener("pointermove", (e) => {
-        if (e.buttons > 0 || e.pointerType === "touch") place(e.clientX);
-    });
-    chart.addEventListener("pointerup", (e) => {
-        chart.releasePointerCapture(e.pointerId);
+        e.preventDefault();
+    }
+    function move(e) {
+        if (!active) return;
+        place(e.clientX);
+        e.preventDefault();
+    }
+    function up(e) {
+        active = false;
+        try { overlay.releasePointerCapture(e.pointerId); } catch (_) {}
         hide();
-    });
-    chart.addEventListener("pointerleave", hide);
-    chart.addEventListener("pointercancel", hide);
+    }
+    overlay.addEventListener("pointerdown", down);
+    overlay.addEventListener("pointermove", move);
+    overlay.addEventListener("pointerup", up);
+    overlay.addEventListener("pointercancel", up);
+    overlay.addEventListener("pointerleave", up);
+    // Touch fallback for browsers without full Pointer Events on SVG.
+    overlay.addEventListener("touchstart", (e) => {
+        if (e.touches.length === 0) return;
+        active = true;
+        place(e.touches[0].clientX);
+        e.preventDefault();
+    }, { passive: false });
+    overlay.addEventListener("touchmove", (e) => {
+        if (!active || e.touches.length === 0) return;
+        place(e.touches[0].clientX);
+        e.preventDefault();
+    }, { passive: false });
+    overlay.addEventListener("touchend", () => { active = false; hide(); });
+    overlay.addEventListener("touchcancel", () => { active = false; hide(); });
 }
 
 function renderSensorGroupHeader() {
@@ -614,7 +639,7 @@ async function setupDrawer() {
                 },
             });
             $("#loc-help").textContent = altText;
-            $("#place-name").textContent = t("home.default_place");
+            $("#place-name").textContent = t("home.gps_position");
             $("#place-detail").textContent = altText;
             toast(`${t("toast.position_ok")} (±${Math.round(pos.accuracy)} m)`);
         } catch (e) {
@@ -691,9 +716,9 @@ async function boot() {
     $("#clock").textContent = formatClock();
 
     // Interactive crosshair on both charts.
-    installCrosshair("live", "live-chart-wrap", "#live-chart", "live-crosshair-tip",
+    installCrosshair("live", "live-chart-wrap", "live-chart-overlay", "live-crosshair-tip",
                      "live-crosshair-line", "live-crosshair-dot", 118);
-    installCrosshair("hist", "hist-chart-wrap", "#hist-chart", "hist-crosshair-tip",
+    installCrosshair("hist", "hist-chart-wrap", "hist-chart-overlay", "hist-crosshair-tip",
                      "hist-crosshair-line", "hist-crosshair-dot", 130);
 
     // Tick loop

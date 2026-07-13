@@ -345,7 +345,8 @@ a { color: inherit; text-decoration: none; }
   border-radius: 20px;
   padding: 18px 18px 8px;
   position: relative;
-  overflow: hidden;
+  /* No overflow:hidden here: the crosshair tooltip lives above the chart
+     and must not be clipped by the card. */
 }
 .hero-pressure .row {
   display: flex;
@@ -424,11 +425,21 @@ a { color: inherit; text-decoration: none; }
 /* Crosshair overlay on interactive charts */
 .chart-wrap {
   position: relative;
-  touch-action: pan-y;
+  touch-action: none;
+  overflow: visible;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.chart-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  cursor: crosshair;
+  background: transparent;
 }
 .crosshair-line {
   opacity: 0;
-  transition: opacity 100ms;
+  transition: opacity 120ms;
   pointer-events: none;
   stroke: var(--fg);
   stroke-width: 1;
@@ -436,7 +447,7 @@ a { color: inherit; text-decoration: none; }
 }
 .crosshair-dot {
   opacity: 0;
-  transition: opacity 100ms;
+  transition: opacity 120ms;
   pointer-events: none;
   fill: var(--fg);
 }
@@ -445,18 +456,19 @@ a { color: inherit; text-decoration: none; }
   pointer-events: none;
   background: var(--surf-2);
   color: var(--fg);
-  padding: 6px 10px;
+  padding: 5px 9px;
   border-radius: 8px;
   font-family: "IBM Plex Mono", monospace;
   font-size: 12px;
   font-weight: 500;
   border: 1px solid var(--border);
   white-space: nowrap;
-  transform: translate(-50%, -110%);
+  transform: translateX(-50%);
+  top: 4px;
   opacity: 0;
-  transition: opacity 100ms;
-  z-index: 3;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+  transition: opacity 120ms;
+  z-index: 5;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 .chart-wrap.active .crosshair-line,
 .chart-wrap.active .crosshair-dot,
