@@ -55,6 +55,7 @@ nav:
   - "Étape 13, journal honnête de calibration": 13-journal-calibration.md
   - "Étape 14, la physique du modèle": 14-physique-modele.md
   - "Étape 15, évaluation rigoureuse": 15-evaluation-rigoureuse.md
+  - "Étape 16, recalibration des seuils": 16-recalibration.md
 
 markdown_extensions:
   - admonition
