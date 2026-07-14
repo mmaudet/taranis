@@ -42,6 +42,17 @@ deploy: bump-sw caddy-restart
 audit:
 	@bash scripts/pwa_e2e_audit.sh
 
+# Access log summary for the PWA. Reads Caddy JSON access log.
+# Enable the `log` directive in the Caddyfile taranis block first.
+stats:
+	@uv run python scripts/pwa_stats.py
+
+stats-today:
+	@uv run python scripts/pwa_stats.py --today
+
+stats-all:
+	@uv run python scripts/pwa_stats.py --all
+
 verify:
 	@echo "== HTTPS via Host header (bypasses DNS mismatch) =="
 	@curl -sk --resolve taranis.maudet.cloud:443:127.0.0.1 \
