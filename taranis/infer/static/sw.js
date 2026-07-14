@@ -2,7 +2,7 @@
 // Cache-first strategy so the PWA works with zero connectivity once installed.
 // Open-Meteo requests are never cached (opt-in live weather only).
 
-const CACHE_VERSION = "taranis-20260714-081748";
+const CACHE_VERSION = "taranis-20260714-162523";
 const SHELL = [
   "./",
   "./index.html",
@@ -20,6 +20,7 @@ const SHELL = [
   "./js/geoloc.js",
   "./js/openmeteo.js",
   "./js/i18n.js",
+  "./js/ruuvi.js",
   "./models/hgb_3ch.json",
   "./models/hgb_3ch_tw8.json",
   "./models/tsjepa_3ch.onnx",

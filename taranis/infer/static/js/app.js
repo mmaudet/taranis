@@ -137,6 +137,17 @@ async function activateDataSource(source, showToast) {
     const tag = $("#sensor-tag");
     stopMockLive();
     stopOpenMeteoPoll();
+
+    if (source === "sensor") {
+        // Do NOT clear the buffer: the BLE handler is the sole owner
+        // of the sensor samples and continues to feed as long as it
+        // holds the Web Bluetooth session.
+        tag.innerHTML = `<span class="dot"></span>BLE`;
+        tag.style.color = "var(--green)";
+        if (showToast) toast(t("sensor.hint"));
+        return;
+    }
+
     await clearAll();
 
     if (source === "mock") {
@@ -162,7 +173,7 @@ async function activateDataSource(source, showToast) {
             startMockLive();
         }
     } else {
-        tag.innerHTML = `<span class="dot"></span>BLE`;
+        tag.innerHTML = `<span class="dot"></span>—`;
         tag.style.color = "var(--dim)";
     }
 }
@@ -782,16 +793,60 @@ async function boot() {
         $("#alert-overlay").classList.remove("open");
     });
 
-    // Pairing
+    // Pairing: real Web Bluetooth RuuviTag v5 path when available, GATT
+    // fallback otherwise. Sensor becomes the primary data source and the
+    // reception updates the pair panel indicators live.
+    let _ruuviHandle = null;
     $("#pair-btn").addEventListener("click", async () => {
+        if (_ruuviHandle) {
+            _ruuviHandle.stop();
+            _ruuviHandle = null;
+            $("#pair-icon").classList.remove("connected");
+            $("#pair-headline").textContent = t("sensor.none");
+            $("#pair-headline-sub").textContent = t("sensor.hint");
+            $("#pair-stats").style.display = "none";
+            $("#pair-btn").textContent = t("sensor.button");
+            return;
+        }
         try {
-            await pairRuuvi();
-            toast(t("toast.pair_deferred"));
-            $("#pair-icon").classList.add("connected");
-            $("#pair-headline").textContent = t("sensor.connected");
-            $("#pair-headline-sub").textContent = t("sensor.connected_sub");
-            $("#pair-stats").style.display = "flex";
+            let lastBatteryUpdate = 0;
+            _ruuviHandle = await pairRuuvi({
+                onSample: (sample) => {
+                    // Sensor readings arrive at ~1 Hz. UI update is cheap;
+                    // buffer.push is done inside pairRuuvi already.
+                    if (Date.now() - lastBatteryUpdate > 10000 && sample.batteryMv) {
+                        const pct = Math.min(100, Math.max(0,
+                            Math.round((sample.batteryMv - 2000) / 10)));
+                        $("#battery-level").style.width = pct + "%";
+                        $("#battery-val").textContent = pct + "%";
+                        lastBatteryUpdate = Date.now();
+                    }
+                },
+                onStatus: (state, detail) => {
+                    if (state === "sample" || state === "gatt_streaming"
+                        || state === "scan_active") {
+                        $("#pair-icon").classList.add("connected");
+                        $("#pair-headline").textContent = t("sensor.connected");
+                        $("#pair-headline-sub").textContent = t("sensor.connected_sub");
+                        $("#pair-stats").style.display = "flex";
+                        if (detail && detail.rssi != null) {
+                            $("#rssi-val").textContent = detail.rssi + " dBm";
+                        }
+                    } else if (state === "disconnected" || state === "stopped") {
+                        $("#pair-icon").classList.remove("connected");
+                        $("#pair-headline").textContent = t("sensor.none");
+                    }
+                },
+            });
+            // Sensor becomes the authoritative data source
+            STATE.settings = saveSettings({ dataSource: "sensor" });
+            $("#opt-source").value = "sensor";
+            $("#sensor-tag").innerHTML = `<span class="dot"></span>Capteur BLE`;
+            $("#sensor-tag").style.color = "var(--green)";
+            $("#pair-btn").textContent = t("sensor.button") + " · ✓";
+            toast(`${t("sensor.connected")} · ${_ruuviHandle.mode}`);
         } catch (e) {
+            _ruuviHandle = null;
             toast(e.message || t("toast.pair_denied"));
         }
     });
