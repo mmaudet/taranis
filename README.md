@@ -28,7 +28,7 @@ Taranis est un système d'alerte orage pensé pour le randonneur : il prédit la
 - **Aucun backend** consulté à l'inférence
 - **Aucune donnée utilisateur** ne quitte le téléphone
 - **Un modèle < 500 KB** téléchargé une fois puis servi hors ligne
-- **Un carnet pédagogique** de 18 chapitres qui documente la démarche brique par brique
+- **Un carnet pédagogique** de 20 chapitres qui documente la démarche brique par brique
 - **Sous licence AGPL-3.0**, données [Etalab](https://www.etalab.gouv.fr/), pas de télémétrie, pas de cookie
 
 ## Aperçu de l'application
@@ -156,7 +156,7 @@ taranis/
 
 ## Approche pédagogique
 
-Le carnet complet, en dix-huit étapes, part du problème et arrive au produit :
+Le carnet complet, en vingt étapes, part du problème et arrive au produit :
 
 1. Le problème d'alerte orage
 2. Le dataset d'entraînement (SYNOP + labels combinés)
@@ -176,8 +176,11 @@ Le carnet complet, en dix-huit étapes, part du problème et arrive au produit :
 16. Recalibration ORANGE / ROUGE
 17. Contrôle TS-JEPA vs baseline HGB
 18. Sonde capteur 3 canaux
+19. Passage produit, PWA on-device
+20. Bugs terrain, altitude et harnais
 
-`uv run mkdocs serve` ouvre le carnet localement.
+`uv run mkdocs serve` ouvre le carnet localement, ou lisez la version
+publiée sur [blog.maudet.cloud/taranis/](https://blog.maudet.cloud/taranis/).
 
 ## Matériel
 
@@ -196,9 +199,15 @@ Le carnet complet, en dix-huit étapes, part du problème et arrive au produit :
 - Commentaires code en anglais, doc utilisateur en français (voir `CONTRIBUTING.md`)
 - Pas de tiret cadratin dans le contenu, code ou commit (convention rédactionnelle)
 
+## Historique des changements
+
+Voir [`CHANGELOG.md`](CHANGELOG.md) au format
+[Keep a Changelog](https://keepachangelog.com/) + [SemVer](https://semver.org/).
+
 ## Contribuer
 
-Voir [`CONTRIBUTING.md`](CONTRIBUTING.md).
+Voir [`CONTRIBUTING.md`](CONTRIBUTING.md) pour le style code / doc,
+[`SECURITY.md`](SECURITY.md) pour reporter une vulnérabilité.
 
 Issues et PR bienvenues. Le projet est petit et documenté ; un onboarding en une demi-journée est possible pour quiconque connait Python et un peu de JavaScript.
 
