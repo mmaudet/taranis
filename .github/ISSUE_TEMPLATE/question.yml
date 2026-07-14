@@ -1,0 +1,45 @@
+name: Question
+description: Poser une question sur le code, le modèle, l'archi, ou le carnet
+labels: ["question"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Avant de poser une question, un rapide check :
+
+        - La [documentation MkDocs](https://blog.maudet.cloud/taranis/)
+          couvre 18 chapitres, votre question a peut-être déjà une réponse
+        - Le [README](../README.md) explique l'architecture générale
+        - Le carnet donne les chiffres AUC, LOO, cross-régime
+
+  - type: textarea
+    id: question
+    attributes:
+      label: Votre question
+      description: Soyez aussi précis que possible
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Contexte
+      description: |
+        Ce que vous essayez de faire, ce que vous avez déjà lu ou
+        essayé. Aide énormément à donner une réponse utile.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Sujet
+      options:
+        - JEPA et paradigme self-supervised
+        - Choix architecturaux (transformer, features, HGB)
+        - Données SYNOP ou ERA5
+        - PWA et déploiement on-device
+        - Reproduction des résultats
+        - Autre
+    validations:
+      required: true

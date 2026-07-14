@@ -1,0 +1,94 @@
+name: Bug report
+description: Signaler un bug dans le code, la PWA, ou l'instance publique
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci de prendre le temps de signaler ce bug.
+
+        Avant de continuer, vérifiez qu'il n'existe pas déjà une
+        [issue similaire](https://github.com/mmaudet/taranis/issues?q=is%3Aissue).
+
+  - type: input
+    id: version
+    attributes:
+      label: Version affectée
+      description: |
+        Pour la PWA, la version est visible dans les réglages en bas
+        (par exemple `taranis-20260714-081748`). Pour le code, le commit
+        hash ou tag.
+      placeholder: "taranis-20260714-081748 ou commit sha"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Où le bug apparaît
+      options:
+        - PWA (navigateur mobile)
+        - PWA (navigateur desktop)
+        - Code Python (entraînement, évaluation)
+        - Scripts d'export ONNX ou JSON
+        - Documentation MkDocs
+        - Infrastructure (Caddy, Docker, HTTPS)
+        - Autre
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Étapes pour reproduire
+      description: Décrivez précisément comment observer le bug
+      placeholder: |
+        1. Aller sur taranis.maudet.cloud
+        2. Cliquer sur ...
+        3. Voir l'erreur
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Comportement attendu
+      description: Ce qui aurait dû se passer
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Comportement observé
+      description: Ce qui se passe réellement, avec captures si possible
+    validations:
+      required: true
+
+  - type: input
+    id: env
+    attributes:
+      label: Environnement
+      description: Navigateur + OS, ou Python + OS + versions clés
+      placeholder: Chrome 130 sur Android 15, Pixel 10 Pro Fold
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs, console, ou stack trace
+      description: |
+        Ouvrez la console navigateur (DevTools) ou copiez la stack trace
+        Python. Utilisez des balises code (triple backticks) pour formater.
+      render: shell
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Confirmation
+      options:
+        - label: J'ai cherché dans les issues existantes
+          required: true
+        - label: Je suis d'accord pour que ce rapport soit rendu public
+          required: true

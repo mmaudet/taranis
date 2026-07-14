@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Article de fond
+    url: https://blog.maudet.cloud/blog/jepa-dans-un-navigateur-chronique-carnet-au-produit/
+    about: Lire d'abord le récit complet du projet
+  - name: Carnet pédagogique (18 chapitres)
+    url: https://blog.maudet.cloud/taranis/
+    about: Documentation détaillée de chaque étape
+  - name: Vulnérabilité de sécurité
+    url: https://github.com/mmaudet/taranis/security/advisories/new
+    about: Ne pas ouvrir d'issue publique, utiliser le canal privé

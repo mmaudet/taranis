@@ -1,0 +1,75 @@
+name: Feature request
+description: Proposer une nouvelle fonctionnalité ou une évolution
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Merci de proposer une amélioration.
+
+        Rappel : Taranis est un projet pédagogique et personnel. La
+        feuille de route est visible dans le [README](../README.md#feuille-de-route).
+        Les PR sont bienvenues, les propositions non implémentées
+        peuvent rester en discussion.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Le problème à résoudre
+      description: |
+        Décrivez le besoin, pas la solution. Un randonneur qui... ?
+        Un développeur qui... ? Un lecteur du carnet qui... ?
+      placeholder: En tant que randonneur, j'aimerais...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposition
+      description: La solution envisagée, avec autant de détails que possible
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considérées
+      description: Autres approches auxquelles vous avez pensé
+    validations:
+      required: false
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Zone concernée
+      options:
+        - Modèle et entraînement (TS-JEPA, HGB, features)
+        - Données (SYNOP, ERA5, Open-Meteo)
+        - PWA (UI, i18n, capteur, réglages)
+        - Infra (Caddy, service worker, déploiement)
+        - Documentation (carnet MkDocs, README)
+        - Autre
+    validations:
+      required: true
+
+  - type: dropdown
+    id: intent
+    attributes:
+      label: Intention
+      options:
+        - J'aimerais l'implémenter moi-même (PR à suivre)
+        - J'aimerais en discuter avant de coder
+        - J'aimerais que quelqu'un l'implémente
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: terms
+    attributes:
+      label: Confirmation
+      options:
+        - label: J'ai lu le README et la feuille de route
+          required: true
+        - label: Cette proposition sert un cas d'usage identifiable
+          required: true
