@@ -87,9 +87,14 @@ a { color: inherit; text-decoration: none; }
   position: relative;
   max-width: 480px;
   margin: 0 auto;
+  /* dvh follows the dynamic viewport. Allow vertical scroll when a
+     screen's content is taller than the viewport (foldable phones in
+     landscape, tall content on small phones). overflow-x hidden keeps
+     the isobar SVG texture from creating horizontal scrollbars. */
   min-height: 100vh;
-  padding: env(safe-area-inset-top, 0) 0 env(safe-area-inset-bottom, 0);
-  overflow: hidden;
+  min-height: 100dvh;
+  padding: env(safe-area-inset-top, 0) 0 0;
+  overflow-x: hidden;
 }
 
 /* Isobar texture background (subtle mountain-map feel) */
@@ -152,11 +157,22 @@ a { color: inherit; text-decoration: none; }
 .screen {
   position: relative;
   z-index: 2;
-  padding: 52px 24px 96px;
-  min-height: 100vh;
+  /* padding-bottom reserves room for the fixed bottom nav (76 px)
+     + the safe-area-inset-bottom (gesture handle) + 16 px breathing
+     room. The screen no longer forces min-height: 100dvh; content
+     can be shorter than viewport (Home) or longer (Live, History)
+     and .app scrolls naturally when needed. */
+  padding: 52px 24px calc(76px + env(safe-area-inset-bottom, 0) + 24px);
   display: none;
   flex-direction: column;
   animation: fadein 0.28s ease-out;
+}
+.screen.active {
+  /* Home in particular wants the vital ring near the visual centre.
+     Give screens a comfortable min-height that still leaves the nav
+     bar visible, and let the flex-column do the vertical distribution. */
+  min-height: calc(100vh - 76px - env(safe-area-inset-bottom, 0));
+  min-height: calc(100dvh - 76px - env(safe-area-inset-bottom, 0));
 }
 .screen.active { display: flex; }
 
@@ -799,20 +815,29 @@ a { color: inherit; text-decoration: none; }
 [data-theme="day"] .pair-btn.connected { color: white; }
 .pair-btn.busy { background: var(--surf-2); color: var(--dim); cursor: default; }
 
-/* --- Bottom nav --- */
+/* --- Bottom nav ---
+   position: fixed pinned to the viewport bottom guarantees visibility
+   regardless of Chrome mobile's dynamic UI (address bar, gesture
+   handle). We add safe-area-inset-bottom so the handle can't overlap
+   the tab buttons on gesture-navigation phones. */
 .nav {
-  position: absolute;
+  position: fixed;
   bottom: 0;
-  left: 0;
-  right: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 100%;
+  max-width: 480px;
   z-index: 6;
-  height: 76px;
+  height: calc(76px + env(safe-area-inset-bottom, 0));
+  padding-bottom: env(safe-area-inset-bottom, 0);
   background: var(--nav-bg);
   border-top: 1px solid var(--border);
   backdrop-filter: blur(16px);
   display: flex;
   align-items: flex-start;
-  padding: 11px 14px 0;
+  padding-left: 14px;
+  padding-right: 14px;
+  padding-top: 11px;
 }
 .nav button {
   flex: 1;

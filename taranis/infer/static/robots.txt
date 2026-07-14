@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+# Save server + client bandwidth: crawlers don't need the ML bundles
+# or the browser wasm cache files. Sitemap for text content only.
+Disallow: /models/
+Disallow: /icons/
+
+# Politeness for the crawlers that read it (Google, Bing, etc.).
+# The site is small; no need to hammer.
+Crawl-delay: 10
+
+Sitemap: https://taranis.maudet.cloud/sitemap.xml
