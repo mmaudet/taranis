@@ -22,8 +22,13 @@ if [ ! -d "$BLOG_ROOT" ]; then
     echo "Erreur : $BLOG_ROOT n'est pas un dossier."
     exit 1
 fi
-if [ ! -d "$BLOG_ROOT/public" ]; then
-    echo "Erreur : $BLOG_ROOT/public/ absent. Est-ce bien un dépôt Astro ?"
+# Astro's public directory is site/public in this blog repo layout.
+if [ -d "$BLOG_ROOT/site/public" ]; then
+    PUBLIC_DIR="$BLOG_ROOT/site/public"
+elif [ -d "$BLOG_ROOT/public" ]; then
+    PUBLIC_DIR="$BLOG_ROOT/public"
+else
+    echo "Erreur : ni $BLOG_ROOT/site/public ni $BLOG_ROOT/public. Est-ce bien un dépôt Astro ?"
     exit 1
 fi
 
@@ -41,7 +46,7 @@ uv sync --extra docs > /dev/null
 uv run mkdocs build --strict --site-dir site
 
 # 2. Nettoyage cible
-TARGET="$BLOG_ROOT/public/taranis"
+TARGET="$PUBLIC_DIR/taranis"
 echo
 echo "== Nettoyage $TARGET =="
 rm -rf "$TARGET"
@@ -59,10 +64,10 @@ echo "Copié : $N_FILES fichiers, $SIZE"
 echo
 echo "== git status côté blog =="
 cd "$BLOG_ROOT"
-git status --short public/taranis/ | head -20
+git status --short "$PUBLIC_DIR/taranis/" 2>&1 | head -20 || true
 echo
 echo "Pour publier :"
 echo "  cd $BLOG_ROOT"
-echo "  git add public/taranis/"
+echo "  git add $(echo "$PUBLIC_DIR/taranis/" | sed "s|$BLOG_ROOT/||")"
 echo "  git commit -m 'docs(taranis): update carnet'"
-echo "  git push"
+echo "  make deploy"
