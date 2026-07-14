@@ -58,6 +58,8 @@ nav:
   - "Étape 16, recalibration des seuils": 16-recalibration.md
   - "Étape 17, TS-JEPA vs baseline HGB (contrôle)": 17-baseline-vs-jepa.md
   - "Étape 18, sonde capteur 3 canaux": 18-sonde-capteur-3ch.md
+  - "Étape 19, passage produit PWA on-device": 19-passage-produit-pwa.md
+  - "Étape 20, bugs terrain, altitude et harnais": 20-bugs-terrain-altitude.md
 
 markdown_extensions:
   - admonition
